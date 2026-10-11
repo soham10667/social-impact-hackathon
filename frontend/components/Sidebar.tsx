@@ -14,9 +14,6 @@ import {
   Sparkles,
   LogOut,
   ShieldAlert,
-  ChevronRight,
-  Flame,
-  Zap
 } from "lucide-react";
 
 interface NavItem {
@@ -75,23 +72,23 @@ export default function Sidebar() {
     : "";
 
   return (
-    <aside className="w-72 bg-[#0C101D] border-r border-[#1C253B] flex flex-col min-h-screen shrink-0 select-none z-30">
+    <aside className="w-72 bg-white border-r border-[#D1FAE5] flex flex-col min-h-screen shrink-0 select-none z-30 shadow-sm">
       {/* Brand Header */}
-      <div className="p-5 border-b border-[#1C253B] flex items-center justify-between">
+      <div className="p-5 border-b border-[#D1FAE5] flex items-center justify-between bg-white">
         <Link href="/dashboard" className="flex items-center gap-3 group">
           <div className="relative">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/25 group-hover:scale-105 transition-transform duration-300">
-              <Sparkles className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#22C55E] to-[#16A34A] flex items-center justify-center text-white shadow-md shadow-green-500/25 group-hover:scale-105 transition-transform duration-300">
+              <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#0C101D]" title="AI Engine Online" />
+            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-[#22C55E] rounded-full border-2 border-white" title="AI Engine Online" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-base text-white tracking-tight group-hover:text-blue-400 transition-colors">
+              <span className="font-extrabold text-base text-[#1F2937] tracking-tight group-hover:text-[#22C55E] transition-colors">
                 PrepPilot AI
               </span>
             </div>
-            <div className="text-[11px] font-semibold tracking-wider text-blue-400/90 uppercase flex items-center gap-1">
+            <div className="text-[11px] font-semibold tracking-wider text-[#16A34A] uppercase flex items-center gap-1">
               <span>Placement Engine</span>
             </div>
           </div>
@@ -99,10 +96,10 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation Links Grouped */}
-      <nav className="flex-1 px-3.5 py-4 space-y-6 overflow-y-auto">
+      <nav className="flex-1 px-3.5 py-4 space-y-6 overflow-y-auto bg-white">
         {navSections.map((section) => (
           <div key={section.title} className="space-y-1">
-            <div className="px-3 pb-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+            <div className="px-3 pb-1 text-[10px] font-extrabold uppercase tracking-wider text-[#6B7280]">
               {section.title}
             </div>
             {section.items.map((item) => {
@@ -115,13 +112,13 @@ export default function Sidebar() {
                   href={item.href}
                   className={`group relative flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                     isActive
-                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25 font-semibold"
-                      : "text-slate-300 hover:text-white hover:bg-[#141B2E]"
+                      ? "bg-[#22C55E] text-white shadow-md shadow-green-500/25 font-semibold"
+                      : "text-[#4B5563] hover:text-[#1F2937] hover:bg-[#F0FDF4]"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <Icon className={`w-4 h-4 transition-transform group-hover:scale-110 ${
-                      isActive ? "text-white" : "text-slate-400 group-hover:text-blue-400"
+                      isActive ? "text-white" : "text-[#6B7280] group-hover:text-[#22C55E]"
                     }`} />
                     <span>{item.name}</span>
                   </div>
@@ -133,22 +130,23 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer Profile Mini Card & Logout */}
-      <div className="p-4 border-t border-[#1C253B] bg-[#0A0D18]">
-        <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#141B2D] border border-[#1E273E] hover:border-blue-500/40 transition-colors">
+      <div className="p-4 border-t border-[#D1FAE5] bg-[#F0FDF4]/50">
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-[#D1FAE5] hover:border-[#86EFAC] shadow-xs transition-colors">
           <Link href="/profile" className="flex items-center gap-3 min-w-0 flex-1 group">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 to-blue-600 flex items-center justify-center font-bold text-white text-xs shadow-md shadow-purple-500/20 shrink-0 group-hover:scale-105 transition-transform">
-              {initials || <User className="w-4 h-4 text-white" />}
+            <div className="w-9 h-9 rounded-xl bg-[#DCFCE7] border border-[#86EFAC] flex items-center justify-center font-bold text-[#15803D] text-xs shadow-xs shrink-0 group-hover:scale-105 transition-transform">
+              {initials || <User className="w-4 h-4 text-[#15803D]" />}
             </div>
             <div className="min-w-0 flex-1 pr-2">
-              <p className="text-xs font-semibold text-white truncate group-hover:text-blue-400 transition-colors">
+              <p className="text-xs font-semibold text-[#1F2937] truncate group-hover:text-[#22C55E] transition-colors">
                 {displayName || "Candidate"}
               </p>
+              <p className="text-[10px] text-[#6B7280] truncate">Active Student</p>
             </div>
           </Link>
           <button
             onClick={handleLogout}
             title="Sign Out of PrepPilot"
-            className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors shrink-0"
+            className="p-2 text-[#6B7280] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
           >
             <LogOut className="w-4 h-4" />
           </button>
@@ -157,4 +155,3 @@ export default function Sidebar() {
     </aside>
   );
 }
-

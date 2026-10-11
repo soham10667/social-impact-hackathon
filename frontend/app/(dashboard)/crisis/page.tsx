@@ -33,7 +33,8 @@ export default function CrisisSimulatorPage() {
   ];
 
   useEffect(() => {
-    axios.get("http://localhost:8000/api/crisis/scenarios")
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    axios.get(`${apiUrl}/api/crisis/scenarios`)
       .then((res) => {
         setScenarios(res.data);
         if (res.data.length > 0) setActiveScenario(res.data[0]);
@@ -45,7 +46,8 @@ export default function CrisisSimulatorPage() {
   }, []);
 
   const handleTakeAction = (key: string) => {
-    axios.post("http://localhost:8000/api/crisis/action", {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    axios.post(`${apiUrl}/api/crisis/action`, {
       session_id: "crisis-session-1",
       action_key: key,
       explanation: "Triage DB Connection Saturation"
@@ -72,9 +74,9 @@ export default function CrisisSimulatorPage() {
 
   if (!activeScenario) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] text-slate-400 space-y-3">
-        <Activity className="w-8 h-8 text-amber-400 animate-spin" />
-        <p className="text-sm">Initializing Crisis Simulator War Room...</p>
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-[#6B7280] space-y-3">
+        <Activity className="w-8 h-8 text-[#22C55E] animate-spin" />
+        <p className="text-sm font-medium">Initializing Crisis Simulator War Room...</p>
       </div>
     );
   }
@@ -82,28 +84,28 @@ export default function CrisisSimulatorPage() {
   const isResolved = evaluation?.status === 'resolved';
 
   return (
-    <div className="space-y-8 animate-fadeIn">
+    <div className="space-y-8 animate-fadeIn text-[#1F2937]">
       {/* Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-red-950/40 via-[#14121E] to-amber-950/30 border border-amber-500/20 p-8 shadow-2xl backdrop-blur-xl">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#FFFBEB] via-white to-[#F0FDF4] border border-[#D1FAE5] p-8 shadow-soft-card">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-50 border border-red-200 text-red-600 text-xs font-semibold">
               <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
               <span>Simulated War Room • Core Innovation 5</span>
             </div>
-            <h1 className="text-3xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
-              <ShieldAlert className="w-8 h-8 text-amber-400" /> AI Technical Crisis Simulator
+            <h1 className="text-3xl font-extrabold text-[#1F2937] tracking-tight flex items-center gap-2.5">
+              <ShieldAlert className="w-8 h-8 text-[#D97706]" /> AI Technical Crisis Simulator
             </h1>
-            <p className="text-slate-300 text-sm leading-relaxed">
+            <p className="text-[#6B7280] text-sm leading-relaxed">
               Step into the shoes of an SRE or Lead Architect triaging high-stakes production outages. Analyze telemetry, diagnose connection pool saturation, and execute mitigation runbooks.
             </p>
           </div>
 
-          <div className="shrink-0 p-4 rounded-2xl bg-[#0B0F1B]/90 border border-amber-500/30 flex items-center gap-3">
+          <div className="shrink-0 p-4 rounded-2xl bg-white border border-[#D1FAE5] shadow-soft-card flex items-center gap-3">
             <div className="w-3 h-3 rounded-full bg-red-500 animate-ping" />
             <div>
-              <p className="text-xs font-bold text-red-400 uppercase tracking-wider">Severity: P0 Outage</p>
-              <p className="text-[11px] text-slate-400">Checkout SLA: 99.9% at risk</p>
+              <p className="text-xs font-bold text-red-600 uppercase tracking-wider">Severity: P0 Outage</p>
+              <p className="text-[11px] text-[#6B7280]">Checkout SLA: 99.9% at risk</p>
             </div>
           </div>
         </div>
@@ -112,30 +114,30 @@ export default function CrisisSimulatorPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Scenario Details & Actions */}
         <div className="lg:col-span-7 space-y-6">
-          <div className="bg-[#121829] p-6 rounded-2xl border border-amber-500/30 shadow-xl space-y-4">
+          <div className="bg-white p-6 rounded-2xl border border-[#D1FAE5] shadow-soft-card space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold px-3 py-1 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+              <span className="text-xs font-extrabold px-3 py-1 rounded-full bg-red-50 text-red-600 border border-red-200 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                 {activeScenario.severity}
               </span>
-              <span className="text-xs font-semibold text-slate-400 bg-slate-800/80 px-2.5 py-1 rounded-lg">
+              <span className="text-xs font-semibold text-[#6B7280] bg-[#F0FDF4] px-2.5 py-1 rounded-lg border border-[#D1FAE5]">
                 {activeScenario.category}
               </span>
             </div>
 
             <div>
-              <h2 className="text-xl font-bold text-white">{activeScenario.title}</h2>
-              <p className="text-xs text-slate-300 leading-relaxed mt-2">{activeScenario.description}</p>
+              <h2 className="text-xl font-bold text-[#1F2937]">{activeScenario.title}</h2>
+              <p className="text-xs text-[#6B7280] leading-relaxed mt-2">{activeScenario.description}</p>
             </div>
 
             {/* Server Error Log Terminal */}
             <div className="space-y-1.5">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Live System Outage Logs</span>
-              <div className="p-4 bg-[#090C15] rounded-xl border border-red-500/20 font-mono text-xs text-red-300 overflow-x-auto shadow-inner">
-                <div className="flex items-center gap-1.5 text-slate-500 text-[10px] pb-2 mb-2 border-b border-slate-800">
-                  <span className="w-2.5 h-2.5 rounded-full bg-red-500/40 inline-block" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500/40 inline-block" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/40 inline-block" />
+              <span className="text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Live System Outage Logs</span>
+              <div className="p-4 bg-[#FAFDFA] rounded-xl border border-red-200 font-mono text-xs text-red-600 overflow-x-auto shadow-inner">
+                <div className="flex items-center gap-1.5 text-[#9CA3AF] text-[10px] pb-2 mb-2 border-b border-[#D1FAE5]">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" />
                   <span className="ml-2">production-api-cluster-04:/var/log/app.err</span>
                 </div>
                 <code>{activeScenario.logs}</code>
@@ -144,12 +146,12 @@ export default function CrisisSimulatorPage() {
           </div>
 
           {/* Action selection */}
-          <div className="bg-[#121829] p-6 rounded-2xl border border-[#1E273E] space-y-4">
+          <div className="bg-white p-6 rounded-2xl border border-[#D1FAE5] shadow-soft-card space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                <Server className="w-4 h-4 text-amber-400" /> Runbook Triage Actions
+              <h3 className="text-xs font-bold text-[#1F2937] uppercase tracking-wider flex items-center gap-2">
+                <Server className="w-4 h-4 text-[#16A34A]" /> Runbook Triage Actions
               </h3>
-              <span className="text-[11px] text-slate-500">Select mitigation strategy</span>
+              <span className="text-[11px] text-[#9CA3AF]">Select mitigation strategy</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -157,9 +159,9 @@ export default function CrisisSimulatorPage() {
                 <button
                   key={act.key}
                   onClick={() => handleTakeAction(act.key)}
-                  className="p-4 rounded-xl border border-slate-800 bg-[#0E1424] hover:border-amber-500 hover:bg-amber-500/10 text-left text-xs font-semibold text-slate-200 hover:text-white transition-all shadow-sm hover:scale-[1.01] active:scale-[0.99]"
+                  className="p-4 rounded-xl border border-[#D1FAE5] bg-white hover:border-[#86EFAC] hover:bg-[#F0FDF4] text-left text-xs font-semibold text-[#1F2937] transition-all shadow-xs hover:scale-[1.01] active:scale-[0.99]"
                 >
-                  <div className="text-amber-400 text-[10px] uppercase font-bold mb-1">Execute Action</div>
+                  <div className="text-[#16A34A] text-[10px] uppercase font-bold mb-1">Execute Action</div>
                   <div>{act.label}</div>
                 </button>
               ))}
@@ -169,34 +171,34 @@ export default function CrisisSimulatorPage() {
 
         {/* Telemetry Metrics & Evaluation */}
         <div className="lg:col-span-5 space-y-6">
-          <div className="bg-[#121829] p-6 rounded-2xl border border-[#1E273E] space-y-4">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-              <Activity className="w-4 h-4 text-blue-400" /> Real-Time Telemetry Dashboard
+          <div className="bg-white p-6 rounded-2xl border border-[#D1FAE5] shadow-soft-card space-y-4">
+            <h3 className="text-xs font-bold text-[#6B7280] uppercase tracking-wider flex items-center gap-2">
+              <Activity className="w-4 h-4 text-[#22C55E]" /> Real-Time Telemetry Dashboard
             </h3>
 
             <div className="space-y-3 font-mono text-xs">
-              <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#0D1220] border border-slate-800">
-                <span className="text-slate-400">HTTP 5xx Error Rate:</span>
-                <span className={`font-bold px-2 py-0.5 rounded ${
-                  isResolved ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10'
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#FAFDFA] border border-[#D1FAE5]">
+                <span className="text-[#6B7280]">HTTP 5xx Error Rate:</span>
+                <span className={`font-bold px-2.5 py-0.5 rounded ${
+                  isResolved ? 'text-[#16A34A] bg-[#DCFCE7]' : 'text-red-600 bg-red-50'
                 }`}>
                   {evaluation?.metrics?.error_rate || activeScenario.metrics.error_rate}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#0D1220] border border-slate-800">
-                <span className="text-slate-400">P99 Latency (SLA 200ms):</span>
-                <span className={`font-bold px-2 py-0.5 rounded ${
-                  isResolved ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-400 bg-amber-500/10'
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#FAFDFA] border border-[#D1FAE5]">
+                <span className="text-[#6B7280]">P99 Latency (SLA 200ms):</span>
+                <span className={`font-bold px-2.5 py-0.5 rounded ${
+                  isResolved ? 'text-[#16A34A] bg-[#DCFCE7]' : 'text-[#D97706] bg-[#FFFBEB]'
                 }`}>
                   {evaluation?.metrics?.latency_p99 || activeScenario.metrics.latency_p99}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#0D1220] border border-slate-800">
-                <span className="text-slate-400">PostgreSQL Connection Pool:</span>
-                <span className={`font-bold px-2 py-0.5 rounded ${
-                  isResolved ? 'text-emerald-400 bg-emerald-500/10' : 'text-purple-400 bg-purple-500/10'
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#FAFDFA] border border-[#D1FAE5]">
+                <span className="text-[#6B7280]">PostgreSQL Connection Pool:</span>
+                <span className={`font-bold px-2.5 py-0.5 rounded ${
+                  isResolved ? 'text-[#16A34A] bg-[#DCFCE7]' : 'text-[#1F2937] bg-gray-100'
                 }`}>
                   {evaluation?.metrics?.db_connections || activeScenario.metrics.db_connections}
                 </span>
@@ -205,22 +207,22 @@ export default function CrisisSimulatorPage() {
           </div>
 
           {evaluation && (
-            <div className={`p-6 rounded-2xl border transition-all animate-fadeIn ${
+            <div className={`p-6 rounded-2xl border transition-all animate-fadeIn shadow-soft-card ${
               isResolved 
-                ? 'bg-emerald-950/20 border-emerald-500/40 shadow-lg shadow-emerald-500/10' 
-                : 'bg-red-950/20 border-red-500/40 shadow-lg shadow-red-500/10'
+                ? 'bg-[#F0FDF4] border-[#86EFAC]' 
+                : 'bg-red-50 border-red-200'
             }`}>
               <div className="flex items-center gap-2 mb-2">
                 {isResolved ? (
-                  <CheckCircle className="w-5 h-5 text-emerald-400" />
+                  <CheckCircle className="w-5 h-5 text-[#16A34A]" />
                 ) : (
-                  <AlertTriangle className="w-5 h-5 text-red-400" />
+                  <AlertTriangle className="w-5 h-5 text-red-600" />
                 )}
-                <h4 className="font-bold text-white text-base">
+                <h4 className="font-bold text-[#1F2937] text-base">
                   State: {evaluation.new_state}
                 </h4>
               </div>
-              <p className="text-xs text-slate-300 leading-relaxed font-sans mt-2">
+              <p className="text-xs text-[#4B5563] leading-relaxed font-sans mt-2">
                 {evaluation.ai_evaluation}
               </p>
             </div>
@@ -230,4 +232,3 @@ export default function CrisisSimulatorPage() {
     </div>
   );
 }
-

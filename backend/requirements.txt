@@ -7,7 +7,6 @@ psycopg2-binary>=2.9.9
 asyncpg>=0.29.0
 supabase>=2.0.0
 langchain>=0.1.0
-langchain-google-genai>=0.0.5
 langgraph>=0.0.15
 pymupdf>=1.23.6
 httpx>=0.25.1

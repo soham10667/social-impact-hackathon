@@ -5,115 +5,208 @@
 @tailwind utilities;
 
 :root {
-  --background: #080B14;
-  --foreground: #F8FAFC;
+  --background: #FAFDFA;
+  --foreground: #1F2937;
+  --primary: #22C55E;
+  --primary-dark: #16A34A;
+  --secondary: #4ADE80;
+  --card-bg: #FFFFFF;
+  --card-border: #D1FAE5;
+  --hover-bg: #DCFCE7;
+  --muted: #6B7280;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
+  color: #1F2937;
+  background-color: #FAFDFA;
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow-x: hidden;
+  min-height: 100vh;
 }
 
 code, pre, .font-mono {
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-/* Custom Sleek Scrollbar */
+/* Custom Sleek Light Green Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #080B14;
+  background: #F0FDF4;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1E273E;
+  background: #A7F3D0;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3B82F6;
+  background: #22C55E;
 }
 
-/* Fix Browser Autofill White Background on Dark Theme */
+/* Form Input Autofill Normalizer for White Theme */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 
 input:-webkit-autofill:focus, 
 input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 1000px #0D1220 inset !important;
-  -webkit-text-fill-color: #F8FAFC !important;
-  caret-color: #F8FAFC !important;
+  -webkit-box-shadow: 0 0 0 1000px #FFFFFF inset !important;
+  -webkit-text-fill-color: #1F2937 !important;
+  caret-color: #1F2937 !important;
   transition: background-color 5000s ease-in-out 0s;
 }
 
-/* Glassmorphism & Card Utilities */
+/* Clean White & Light-Green Card Architecture */
+.clean-card,
+.glass-card,
 .glass-panel {
-  background: rgba(20, 27, 45, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: #FFFFFF !important;
+  border: 1px solid #D1FAE5 !important;
+  border-radius: 18px !important;
+  box-shadow: 0 4px 20px -2px rgba(34, 197, 94, 0.07), 0 2px 8px -2px rgba(0, 0, 0, 0.03) !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.glass-card {
-  background: rgba(20, 27, 45, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
-}
-
+.clean-card:hover,
 .glass-card:hover {
-  border-color: rgba(59, 130, 246, 0.3);
+  border-color: #86EFAC !important;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px -4px rgba(34, 197, 94, 0.16), 0 4px 12px -2px rgba(0, 0, 0, 0.04) !important;
 }
 
-/* Background Cyber Grid */
+/* Background Subtle Organic Gradients */
+.bg-organic-blob {
+  background: radial-gradient(circle at 15% 20%, rgba(240, 253, 244, 0.9) 0%, transparent 45%),
+              radial-gradient(circle at 85% 80%, rgba(220, 252, 231, 0.6) 0%, transparent 50%),
+              radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 1) 0%, transparent 100%);
+}
+
 .bg-grid-pattern {
-  background-size: 40px 40px;
+  background-size: 36px 36px;
   background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    linear-gradient(to right, rgba(34, 197, 94, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(34, 197, 94, 0.05) 1px, transparent 1px);
 }
 
 .bg-dot-pattern {
   background-size: 24px 24px;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(34, 197, 94, 0.12) 1.5px, transparent 1.5px);
 }
 
-/* Gradient Text Shimmer */
-.gradient-text-blue {
-  background: linear-gradient(135deg, #60A5FA 0%, #A78BFA 50%, #38BDF8 100%);
+/* Gradient Text for Green Theme */
+.gradient-text-green {
+  background: linear-gradient(135deg, #15803D 0%, #22C55E 60%, #16A34A 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
+.gradient-text-blue,
 .gradient-text-emerald {
-  background: linear-gradient(135deg, #34D399 0%, #6EE7B7 50%, #60A5FA 100%);
+  background: linear-gradient(135deg, #166534 0%, #16A34A 50%, #22C55E 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
-/* React Flow Controls styling fix for dark mode */
+/* Primary Button Styling */
+.btn-primary {
+  background-color: #22C55E;
+  color: #FFFFFF;
+  font-weight: 600;
+  border-radius: 12px;
+  box-shadow: 0 4px 14px 0 rgba(34, 197, 94, 0.35);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-primary:hover {
+  background-color: #16A34A;
+  transform: scale(1.02);
+  box-shadow: 0 6px 20px 0 rgba(34, 197, 94, 0.45);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+/* Secondary Button Styling */
+.btn-secondary {
+  background-color: #FFFFFF;
+  color: #15803D;
+  border: 1px solid #86EFAC;
+  font-weight: 600;
+  border-radius: 12px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-secondary:hover {
+  background-color: #F0FDF4;
+  border-color: #22C55E;
+}
+
+/* Tables styling */
+table.clean-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #D1FAE5;
+}
+
+table.clean-table thead tr {
+  background-color: #F0FDF4;
+  color: #166534;
+  font-weight: 700;
+  border-bottom: 2px solid #D1FAE5;
+}
+
+table.clean-table tbody tr {
+  background-color: #FFFFFF;
+  transition: background-color 0.15s ease;
+}
+
+table.clean-table tbody tr:nth-child(even) {
+  background-color: #F9FEF9;
+}
+
+table.clean-table tbody tr:hover {
+  background-color: #DCFCE7;
+}
+
+/* Form Inputs */
+input.clean-input, textarea.clean-input, select.clean-input {
+  background-color: #FFFFFF;
+  border: 1.5px solid #D1FAE5;
+  color: #1F2937;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+input.clean-input:focus, textarea.clean-input:focus, select.clean-input:focus {
+  outline: none;
+  border-color: #22C55E;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+}
+
+/* React Flow Controls styling for light mode */
 .react-flow__controls-button {
-  background-color: #141B2D !important;
-  border-bottom: 1px solid #1E273E !important;
-  fill: #F8FAFC !important;
+  background-color: #FFFFFF !important;
+  border-bottom: 1px solid #D1FAE5 !important;
+  fill: #1F2937 !important;
 }
 
 .react-flow__controls-button:hover {
-  background-color: #3B82F6 !important;
+  background-color: #DCFCE7 !important;
 }
 
 .react-flow__controls-button svg {
-  fill: #F8FAFC !important;
+  fill: #166534 !important;
 }
 
-/* Custom animations for AI Voice Interview Arena */
+/* Voice Arena animations */
 @keyframes voice-ripple {
   0% { transform: scale(0.95); opacity: 0.8; }
   50% { transform: scale(1.15); opacity: 0.2; }
@@ -125,22 +218,12 @@ input:-webkit-autofill:active {
   100% { background-position: 200% 0; }
 }
 
-@keyframes neon-glow {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.9; }
-}
-
 .animate-voice-ripple {
   animation: voice-ripple 2.4s cubic-bezier(0, 0.2, 0.8, 1) infinite;
 }
 
 .animate-voice-shimmer {
-  background: linear-gradient(90deg, rgba(59,130,246,0) 0%, rgba(59,130,246,0.3) 50%, rgba(59,130,246,0) 100%);
+  background: linear-gradient(90deg, rgba(34,197,94,0) 0%, rgba(34,197,94,0.3) 50%, rgba(34,197,94,0) 100%);
   background-size: 200% 100%;
   animation: voice-shimmer 3s infinite;
 }
-
-.animate-neon-glow {
-  animation: neon-glow 2s ease-in-out infinite;
-}
-

@@ -297,3 +297,24 @@ CREATE POLICY "Users can insert their own activity"
     ON user_daily_activity FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
+-- 13. Interview Row Level Security (RLS)
+ALTER TABLE interview_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE interview_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE interview_evaluations ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own interview sessions"
+    ON interview_sessions FOR ALL
+    USING (auth.uid() = student_id OR auth.uid() IN (SELECT user_id FROM student_profiles WHERE id = student_id));
+
+CREATE POLICY "Users can manage their own interview messages"
+    ON interview_messages FOR ALL
+    USING (session_id IN (
+        SELECT id FROM interview_sessions WHERE student_id = auth.uid() OR student_id IN (SELECT id FROM student_profiles WHERE user_id = auth.uid())
+    ));
+
+CREATE POLICY "Users can manage their own interview evaluations"
+    ON interview_evaluations FOR ALL
+    USING (session_id IN (
+        SELECT id FROM interview_sessions WHERE student_id = auth.uid() OR student_id IN (SELECT id FROM student_profiles WHERE user_id = auth.uid())
+    ));
+

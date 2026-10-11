@@ -8,15 +8,19 @@ export async function GET(req: NextRequest) {
     const isConfigured = Boolean(
       deepgramKey && 
       deepgramKey !== "your-deepgram-api-key" && 
-      deepgramKey !== "your_deepgram_api_key"
+      deepgramKey !== "your_deepgram_api_key" &&
+      deepgramKey.length > 20
     );
 
     return NextResponse.json({
       configured: isConfigured,
-      key: isConfigured ? deepgramKey : null,
+      hasKey: isConfigured,
+      sttEndpoint: "/api/interviews/stt",
+      ttsVoice: "aura-asteria-en",
+      provider: "deepgram",
       message: isConfigured
-        ? "Deepgram voice API is configured and operational."
-        : "Deepgram API key not provided or set to default placeholder. Web Speech API fallback is active.",
+        ? "Deepgram Speech-to-Text (Nova-2) and Aura Text-to-Speech active."
+        : "Deepgram API key placeholder detected. Browser Web Speech fallback active.",
     });
   } catch (err: any) {
     return NextResponse.json(

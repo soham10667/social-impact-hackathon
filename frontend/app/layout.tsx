@@ -15,7 +15,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="bg-background text-mainText min-h-screen antialiased">
+      <body className="bg-[#FAFDFA] text-[#1F2937] min-h-screen antialiased selection:bg-green-100 selection:text-green-800">
         <AuthProvider>
           <InterviewSessionProvider>
             {children}

@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -15,6 +14,9 @@ import {
   AlertCircle,
   CheckCircle2,
   ShieldCheck,
+  Code2,
+  GitFork,
+  Loader2,
 } from "lucide-react";
 
 type FormField =
@@ -65,7 +67,6 @@ export default function RegisterPage() {
       case "email": {
         const v = String(value ?? email).trim();
 
-        // Validate the actual entered address, not a placeholder.
         const emailRegex =
           /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+$/;
 
@@ -109,6 +110,23 @@ export default function RegisterPage() {
     return error;
   };
 
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const isSubmittingRef = useRef(false);
+
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return;
+    const interval = setInterval(() => {
+      setCooldownSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [cooldownSeconds]);
+
   const handleBlur = (field: FormField) => {
     setTouched((previous) => ({ ...previous, [field]: true }));
     validateField(field);
@@ -119,7 +137,8 @@ export default function RegisterPage() {
   ) => {
     event.preventDefault();
 
-    if (loading) return;
+    // Prevent duplicate simultaneous requests or requests during cooldown
+    if (loading || isSubmittingRef.current || cooldownSeconds > 0) return;
 
     const allFields: FormField[] = [
       "fullName",
@@ -154,14 +173,18 @@ export default function RegisterPage() {
 
     if (Object.keys(validationErrors).length > 0) return;
 
+    // Lock submission immediately synchronously
+    isSubmittingRef.current = true;
     setLoading(true);
     setErrors({});
     setSuccessMsg(null);
 
-    const cleanEmail = email.trim();
+    const cleanEmail = email.trim().toLowerCase();
     const cleanName = fullName.trim();
 
     try {
+      const redirectOrigin = typeof window !== "undefined" ? window.location.origin : "";
+
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password,
@@ -170,15 +193,36 @@ export default function RegisterPage() {
             full_name: cleanName,
             target_role: targetRole,
           },
+          emailRedirectTo: redirectOrigin ? `${redirectOrigin}/login` : undefined,
         },
       });
 
       if (error) {
-        setErrors({ general: error.message });
+        const errorMsg = (error.message || "").toLowerCase();
+        const status = (error as any)?.status;
+
+        // Check specifically for Supabase rate limit & HTTP 429
+        if (
+          status === 429 ||
+          errorMsg.includes("rate limit") ||
+          errorMsg.includes("too many requests") ||
+          errorMsg.includes("over_email_send_rate_limit")
+        ) {
+          setCooldownSeconds(60);
+          setErrors({
+            general:
+              "Email rate limit exceeded. Supabase limits automated confirmation emails on free tiers. Please wait 60 seconds before trying again, or contact the workspace administrator to configure custom SMTP."
+          });
+        } else if (errorMsg.includes("user already registered")) {
+          setErrors({
+            general: "An account with this email already exists. Please sign in instead."
+          });
+        } else {
+          setErrors({ general: error.message });
+        }
         return;
       }
 
-      // Store display information only; this is not authentication.
       if (typeof window !== "undefined") {
         localStorage.setItem(
           "preppilot_user",
@@ -190,109 +234,138 @@ export default function RegisterPage() {
         );
       }
 
-      if (data.session) {
+      if (data?.session) {
         setSuccessMsg(
           "Account created successfully! Redirecting to your dashboard..."
         );
-
         setTimeout(() => router.push("/dashboard"), 1200);
       } else {
         setSuccessMsg(
-          "Registration received! Check your email to confirm your account, then sign in."
+          "Registration successful! Please check your email inbox to confirm your account before signing in."
         );
       }
     } catch (error: unknown) {
       const message =
         error instanceof Error
           ? error.message
-          : "Registration failed. Please try again.";
+          : "Registration failed. Please check your network and try again.";
 
-      setErrors({ general: message });
+      if (message.toLowerCase().includes("rate limit") || message.toLowerCase().includes("429")) {
+        setCooldownSeconds(60);
+        setErrors({
+          general: "Email rate limit exceeded. Please wait 60 seconds before submitting again."
+        });
+      } else {
+        setErrors({ general: message });
+      }
     } finally {
       setLoading(false);
+      isSubmittingRef.current = false;
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#080B14] text-[#F8FAFC] flex flex-col md:flex-row font-sans selection:bg-blue-500/30">
-      {/* Branding */}
-      <div className="md:w-1/2 p-8 md:p-14 bg-gradient-to-br from-[#0E1322] via-[#090C16] to-[#080B14] border-r border-slate-800/80 flex flex-col justify-between relative overflow-hidden">
-        <div className="absolute top-10 left-10 w-96 h-96 bg-purple-600/10 blur-[130px] rounded-full pointer-events-none" />
-        <div className="absolute bottom-10 right-10 w-96 h-96 bg-blue-600/10 blur-[130px] rounded-full pointer-events-none" />
+    <div className="min-h-screen bg-[#FAFDFA] text-[#1F2937] flex flex-col md:flex-row font-sans selection:bg-green-100 selection:text-green-800">
+      {/* Branding column */}
+      <div className="md:w-1/2 p-8 md:p-14 bg-gradient-to-br from-[#F0FDF4] via-[#FFFFFF] to-[#DCFCE7]/40 border-r border-[#D1FAE5] flex flex-col justify-between relative overflow-hidden">
+        <div className="absolute top-10 left-10 w-96 h-96 bg-green-200/40 blur-[130px] rounded-full pointer-events-none" />
+        <div className="absolute bottom-10 right-10 w-96 h-96 bg-emerald-200/30 blur-[130px] rounded-full pointer-events-none" />
 
         <div className="relative z-10">
           <Link href="/" className="inline-flex items-center gap-3 mb-12 group">
-            <div className="bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 p-2.5 rounded-xl text-white shadow-lg shadow-blue-500/25 group-hover:scale-105 transition-transform">
-              <Sparkles className="w-6 h-6" />
+            <div className="bg-gradient-to-tr from-[#22C55E] to-[#16A34A] p-2.5 rounded-xl text-white shadow-md shadow-green-500/25 group-hover:scale-105 transition-transform">
+              <Sparkles className="w-6 h-6 text-white" />
             </div>
             <div>
-              <span className="font-extrabold text-2xl tracking-tight text-white block leading-none">
+              <span className="font-extrabold text-2xl tracking-tight text-[#1F2937] block leading-none">
                 PrepPilot AI
               </span>
-              <span className="text-xs font-semibold tracking-wider text-blue-400 uppercase">
+              <span className="text-xs font-semibold tracking-wider text-[#16A34A] uppercase">
                 Placement Engine
               </span>
             </div>
           </Link>
 
-          <h1 className="text-4xl md:text-5xl font-extrabold text-white leading-tight mb-6">
+          <h1 className="text-4xl md:text-5xl font-extrabold text-[#1F2937] leading-tight mb-6">
             Join Candidates Getting{" "}
-            <span className="bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">
+            <span className="text-[#16A34A]">
               Placement Ready
             </span>
           </h1>
 
-          <p className="text-base text-slate-300 leading-relaxed max-w-lg mb-10">
+          <p className="text-base text-[#6B7280] leading-relaxed max-w-lg mb-10 font-normal">
             Create your account to start AI mock interviews, practice sandboxed
             debugging, and track your technical skill graph.
           </p>
 
           <div className="space-y-4 max-w-md">
-            <div className="flex items-center gap-3.5 p-4 rounded-2xl bg-[#121829] border border-slate-800/80 hover:border-blue-500/30 transition-colors shadow-lg">
-              <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+            <div className="flex items-center gap-3.5 p-4 rounded-2xl bg-white border border-[#D1FAE5] hover:border-[#86EFAC] hover:shadow-soft-hover transition-all shadow-soft-card">
+              <div className="w-9 h-9 rounded-xl bg-[#F0FDF4] border border-[#D1FAE5] flex items-center justify-center text-[#16A34A] shrink-0">
                 <ShieldCheck className="w-5 h-5" />
               </div>
-              <div className="text-xs text-slate-400">
-                <strong className="text-white block font-semibold">
+              <div className="text-xs text-[#6B7280]">
+                <strong className="text-[#1F2937] block font-semibold text-sm">
                   Supabase Auth Protection
                 </strong>
                 Secure JWT sessions & encrypted credentials
               </div>
             </div>
+            <div className="flex items-center gap-3.5 p-4 rounded-2xl bg-white border border-[#D1FAE5] hover:border-[#86EFAC] hover:shadow-soft-hover transition-all shadow-soft-card">
+              <div className="w-9 h-9 rounded-xl bg-[#F0FDF4] border border-[#D1FAE5] flex items-center justify-center text-[#16A34A] shrink-0">
+                <Code2 className="w-5 h-5" />
+              </div>
+              <div className="text-xs text-[#6B7280]">
+                <strong className="text-[#1F2937] block font-semibold text-sm">
+                  Interactive Compiler & Sandboxes
+                </strong>
+                OneCompiler microservice integration
+              </div>
+            </div>
+            <div className="flex items-center gap-3.5 p-4 rounded-2xl bg-white border border-[#D1FAE5] hover:border-[#86EFAC] hover:shadow-soft-hover transition-all shadow-soft-card">
+              <div className="w-9 h-9 rounded-xl bg-[#F0FDF4] border border-[#D1FAE5] flex items-center justify-center text-[#16A34A] shrink-0">
+                <GitFork className="w-5 h-5" />
+              </div>
+              <div className="text-xs text-[#6B7280]">
+                <strong className="text-[#1F2937] block font-semibold text-sm">
+                  Adaptive Learning Roadmap
+                </strong>
+                Dynamic competency trees and mistake tracking
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="relative z-10 text-xs text-slate-500 pt-8">
+        <div className="relative z-10 text-xs text-[#9CA3AF] pt-8">
           © 2026 PrepPilot AI Inc. All rights reserved.
         </div>
       </div>
 
       {/* Registration form */}
-      <div className="md:w-1/2 p-8 md:p-14 flex items-center justify-center bg-[#080B14] relative">
+      <div className="md:w-1/2 p-8 md:p-14 flex items-center justify-center bg-white relative">
         <div className="w-full max-w-md space-y-6">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-semibold mb-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F0FDF4] border border-[#D1FAE5] text-[#16A34A] text-xs font-semibold mb-3">
               <Sparkles className="w-3.5 h-3.5" />
               Start For Free
             </div>
-            <h2 className="text-3xl font-extrabold text-white tracking-tight">
+            <h2 className="text-3xl font-extrabold text-[#1F2937] tracking-tight">
               Create Account
             </h2>
-            <p className="text-sm text-slate-400 mt-2">
+            <p className="text-sm text-[#6B7280] mt-2">
               Start your technical interview preparation journey today.
             </p>
           </div>
 
           {errors.general && (
-            <div role="alert" className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-xs text-red-300 flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+            <div role="alert" className="p-4 rounded-2xl bg-red-50 border border-red-200 text-xs text-red-600 flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
               <div>{errors.general}</div>
             </div>
           )}
 
           {successMsg && (
-            <div role="status" className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300 flex items-start gap-2.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <div role="status" className="p-4 rounded-2xl bg-[#F0FDF4] border border-[#86EFAC] text-xs text-[#166534] flex items-start gap-2.5 font-medium">
+              <CheckCircle2 className="w-4 h-4 text-[#16A34A] shrink-0 mt-0.5" />
               <div>{successMsg}</div>
             </div>
           )}
@@ -300,11 +373,11 @@ export default function RegisterPage() {
           <form onSubmit={handleRegister} className="space-y-4" noValidate>
             {/* Full name */}
             <div>
-              <label htmlFor="fullName" className="text-xs font-semibold text-slate-300 block mb-1.5">
-                Full Name <span className="text-blue-400">*</span>
+              <label htmlFor="fullName" className="text-xs font-semibold text-[#1F2937] block mb-1.5">
+                Full Name <span className="text-[#16A34A]">*</span>
               </label>
               <div className="relative">
-                <User className="w-4 h-4 text-slate-500 absolute left-4 top-3.5" />
+                <User className="w-4 h-4 text-[#9CA3AF] absolute left-4 top-3.5" />
                 <input
                   id="fullName"
                   type="text"
@@ -316,25 +389,25 @@ export default function RegisterPage() {
                   }}
                   onBlur={() => handleBlur("fullName")}
                   placeholder="Alex Johnson"
-                  className={`w-full bg-[#0D1220] border rounded-xl pl-11 pr-4 py-3.5 text-sm text-white focus:outline-none transition ${
+                  className={`w-full bg-white border rounded-xl pl-11 pr-4 py-3.5 text-sm text-[#1F2937] placeholder-[#9CA3AF] focus:outline-none transition ${
                     touched.fullName && errors.fullName
-                      ? "border-red-500/70 focus:border-red-500"
-                      : "border-slate-800 focus:border-blue-500"
+                      ? "border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                      : "border-[#D1FAE5] focus:border-[#22C55E] focus:ring-3 focus:ring-green-100"
                   }`}
                 />
               </div>
               {touched.fullName && errors.fullName && (
-                <p className="text-[11px] text-red-400 mt-1">{errors.fullName}</p>
+                <p className="text-[11px] text-red-500 mt-1 font-medium">{errors.fullName}</p>
               )}
             </div>
 
             {/* Email */}
             <div>
-              <label htmlFor="email" className="text-xs font-semibold text-slate-300 block mb-1.5">
-                Email Address <span className="text-blue-400">*</span>
+              <label htmlFor="email" className="text-xs font-semibold text-[#1F2937] block mb-1.5">
+                Email Address <span className="text-[#16A34A]">*</span>
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-slate-500 absolute left-4 top-3.5" />
+                <Mail className="w-4 h-4 text-[#9CA3AF] absolute left-4 top-3.5" />
                 <input
                   id="email"
                   type="email"
@@ -346,30 +419,30 @@ export default function RegisterPage() {
                   }}
                   onBlur={() => handleBlur("email")}
                   placeholder="alex@university.edu"
-                  className={`w-full bg-[#0D1220] border rounded-xl pl-11 pr-4 py-3.5 text-sm text-white focus:outline-none transition ${
+                  className={`w-full bg-white border rounded-xl pl-11 pr-4 py-3.5 text-sm text-[#1F2937] placeholder-[#9CA3AF] focus:outline-none transition ${
                     touched.email && errors.email
-                      ? "border-red-500/70 focus:border-red-500"
-                      : "border-slate-800 focus:border-blue-500"
+                      ? "border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                      : "border-[#D1FAE5] focus:border-[#22C55E] focus:ring-3 focus:ring-green-100"
                   }`}
                 />
               </div>
               {touched.email && errors.email && (
-                <p className="text-[11px] text-red-400 mt-1">{errors.email}</p>
+                <p className="text-[11px] text-red-500 mt-1 font-medium">{errors.email}</p>
               )}
             </div>
 
             {/* Target role */}
             <div>
-              <label htmlFor="targetRole" className="text-xs font-semibold text-slate-300 block mb-1.5">
+              <label htmlFor="targetRole" className="text-xs font-semibold text-[#1F2937] block mb-1.5">
                 Target Job Role
               </label>
               <div className="relative">
-                <Briefcase className="w-4 h-4 text-slate-500 absolute left-4 top-3.5" />
+                <Briefcase className="w-4 h-4 text-[#9CA3AF] absolute left-4 top-3.5 pointer-events-none" />
                 <select
                   id="targetRole"
                   value={targetRole}
                   onChange={(event) => setTargetRole(event.target.value)}
-                  className="w-full bg-[#0D1220] border border-slate-800 rounded-xl pl-11 pr-4 py-3.5 text-sm text-white focus:outline-none focus:border-blue-500 transition appearance-none"
+                  className="w-full bg-white border border-[#D1FAE5] rounded-xl pl-11 pr-4 py-3.5 text-sm text-[#1F2937] focus:outline-none focus:border-[#22C55E] focus:ring-3 focus:ring-green-100 transition appearance-none cursor-pointer"
                 >
                   <option value="Full-Stack Developer">Full-Stack Developer</option>
                   <option value="Backend Developer">Backend Developer</option>
@@ -383,11 +456,11 @@ export default function RegisterPage() {
             {/* Passwords */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label htmlFor="password" className="text-xs font-semibold text-slate-300 block mb-1.5">
-                  Password <span className="text-blue-400">*</span>
+                <label htmlFor="password" className="text-xs font-semibold text-[#1F2937] block mb-1.5">
+                  Password <span className="text-[#16A34A]">*</span>
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                  <Lock className="w-4 h-4 text-[#9CA3AF] absolute left-3.5 top-3.5" />
                   <input
                     id="password"
                     type={showPassword ? "text" : "password"}
@@ -400,24 +473,24 @@ export default function RegisterPage() {
                     }}
                     onBlur={() => handleBlur("password")}
                     placeholder="Min 8 chars"
-                    className={`w-full bg-[#0D1220] border rounded-xl pl-10 pr-3 py-3.5 text-xs text-white focus:outline-none transition ${
+                    className={`w-full bg-white border rounded-xl pl-10 pr-3 py-3.5 text-xs text-[#1F2937] placeholder-[#9CA3AF] focus:outline-none transition ${
                       touched.password && errors.password
-                        ? "border-red-500/70"
-                        : "border-slate-800 focus:border-blue-500"
+                        ? "border-red-400 focus:border-red-500"
+                        : "border-[#D1FAE5] focus:border-[#22C55E]"
                     }`}
                   />
                 </div>
                 {touched.password && errors.password && (
-                  <p className="text-[11px] text-red-400 mt-1">{errors.password}</p>
+                  <p className="text-[11px] text-red-500 mt-1 font-medium">{errors.password}</p>
                 )}
               </div>
 
               <div>
-                <label htmlFor="confirmPassword" className="text-xs font-semibold text-slate-300 block mb-1.5">
-                  Confirm Password <span className="text-blue-400">*</span>
+                <label htmlFor="confirmPassword" className="text-xs font-semibold text-[#1F2937] block mb-1.5">
+                  Confirm Password <span className="text-[#16A34A]">*</span>
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                  <Lock className="w-4 h-4 text-[#9CA3AF] absolute left-3.5 top-3.5" />
                   <input
                     id="confirmPassword"
                     type={showPassword ? "text" : "password"}
@@ -429,15 +502,15 @@ export default function RegisterPage() {
                     }}
                     onBlur={() => handleBlur("confirmPassword")}
                     placeholder="Re-enter password"
-                    className={`w-full bg-[#0D1220] border rounded-xl pl-10 pr-3 py-3.5 text-xs text-white focus:outline-none transition ${
+                    className={`w-full bg-white border rounded-xl pl-10 pr-3 py-3.5 text-xs text-[#1F2937] placeholder-[#9CA3AF] focus:outline-none transition ${
                       touched.confirmPassword && errors.confirmPassword
-                        ? "border-red-500/70"
-                        : "border-slate-800 focus:border-blue-500"
+                        ? "border-red-400 focus:border-red-500"
+                        : "border-[#D1FAE5] focus:border-[#22C55E]"
                     }`}
                   />
                 </div>
                 {touched.confirmPassword && errors.confirmPassword && (
-                  <p className="text-[11px] text-red-400 mt-1">{errors.confirmPassword}</p>
+                  <p className="text-[11px] text-red-500 mt-1 font-medium">{errors.confirmPassword}</p>
                 )}
               </div>
             </div>
@@ -445,14 +518,14 @@ export default function RegisterPage() {
             <button
               type="button"
               onClick={() => setShowPassword((previous) => !previous)}
-              className="text-xs text-blue-400 hover:text-blue-300"
+              className="text-xs text-[#16A34A] hover:text-[#22C55E] font-medium"
             >
               {showPassword ? "Hide passwords" : "Show passwords"}
             </button>
 
             {/* Terms */}
             <div className="pt-1">
-              <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-400 hover:text-slate-200">
+              <label className="flex items-center gap-2 cursor-pointer text-xs text-[#6B7280] hover:text-[#1F2937]">
                 <input
                   type="checkbox"
                   checked={termsAccepted}
@@ -461,28 +534,41 @@ export default function RegisterPage() {
                     if (touched.terms) validateField("terms", event.target.checked);
                   }}
                   onBlur={() => handleBlur("terms")}
-                  className="rounded border-slate-700 bg-[#0D1220] text-blue-600 focus:ring-0"
+                  className="rounded border-[#D1FAE5] text-[#22C55E] focus:ring-[#22C55E]"
                 />
                 I agree to the Terms of Service & Privacy Policy
               </label>
               {touched.terms && errors.terms && (
-                <p className="text-[11px] text-red-400 mt-1">{errors.terms}</p>
+                <p className="text-[11px] text-red-500 mt-1 font-medium">{errors.terms}</p>
               )}
             </div>
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50 hover:scale-[1.01] active:scale-[0.99]"
+              disabled={loading || cooldownSeconds > 0}
+              className="w-full bg-[#22C55E] hover:bg-[#16A34A] text-white font-semibold py-3.5 rounded-xl shadow-button-primary transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-[0.99]"
             >
-              {loading ? "Creating Account..." : "Create PrepPilot Account"}
-              <ArrowRight className="w-4 h-4" />
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Creating Account...</span>
+                </>
+              ) : cooldownSeconds > 0 ? (
+                <>
+                  <span>Please wait {cooldownSeconds}s before retry</span>
+                </>
+              ) : (
+                <>
+                  <span>Create PrepPilot Account</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </form>
 
-          <div className="text-center text-xs text-slate-400 pt-2">
+          <div className="text-center text-xs text-[#6B7280] pt-2">
             Already have an account?{" "}
-            <Link href="/login" className="font-bold text-blue-400 hover:text-blue-300">
+            <Link href="/login" className="font-bold text-[#16A34A] hover:text-[#22C55E]">
               Sign In
             </Link>
           </div>

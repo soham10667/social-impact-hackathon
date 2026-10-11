@@ -15,6 +15,7 @@ import {
   MicOff, 
   Play, 
   Square, 
+  Pause,
   Clock, 
   X, 
   Award,
@@ -30,20 +31,33 @@ import {
   TrendingUp,
   Radio,
   Sparkles,
-  Bell,
-  Sun,
-  Moon,
   ChevronRight
 } from "lucide-react";
 
 interface PreInterviewForm {
   fullName: string;
-  interviewType: "Technical" | "HR / Behavioral" | "System Design" | "General";
-  experienceLevel: "Fresher" | "0–1 Year" | "1–3 Years" | "3+ Years";
+  interviewType: "Technical" | "HR" | "Behavioral" | "Mixed";
+  experienceLevel: "Fresher" | "Intermediate" | "Experienced";
   targetRole: string;
-  language: "English" | "Hindi" | "Hinglish";
-  durationMinutes: number;
+  language: "English" | "Hindi";
+  durationMinutes: 10 | 15 | 20 | 30;
+  jobDescription?: string;
 }
+
+export type AgentState = 
+  | "IDLE"
+  | "SETUP"
+  | "INTRODUCTION"
+  | "ASKING"
+  | "LISTENING"
+  | "TRANSCRIBING"
+  | "EVALUATING"
+  | "FOLLOW_UP"
+  | "NEXT_QUESTION"
+  | "CLOSING"
+  | "COMPLETED"
+  | "PAUSED"
+  | "ERROR";
 
 export default function InterviewPage() {
   const searchParams = useSearchParams();
@@ -58,13 +72,28 @@ export default function InterviewPage() {
 
   useEffect(() => {
     if (tabParam === "timemachine") setActiveTab("timemachine");
-    else if (tabParam === "interview") setActiveTab("interview");
+    else setActiveTab("interview");
   }, [tabParam]);
 
-  // Clean up session on unmount
+  // Clean up session and audio resources on unmount
   useEffect(() => {
     return () => {
       setIsInterviewActive(false);
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+      }
+      if (deepgramSocketRef.current) {
+        try { deepgramSocketRef.current.close(); } catch {}
+        deepgramSocketRef.current = null;
+      }
+      if (currentAudioRef.current) {
+        try { currentAudioRef.current.pause(); } catch {}
+        currentAudioRef.current = null;
+      }
+      if (synthRef.current) {
+        try { synthRef.current.cancel(); } catch {}
+      }
     };
   }, [setIsInterviewActive]);
 
@@ -99,12 +128,22 @@ export default function InterviewPage() {
 
   // Audio & Live Interview States
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [agentState, setAgentState] = useState<AgentState>("IDLE");
   const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [isPaused, setIsPaused] = useState<boolean>(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState<boolean>(false);
   const [isCandidateSpeaking, setIsCandidateSpeaking] = useState<boolean>(false);
   const [isAiThinking, setIsAiThinking] = useState<boolean>(false);
   const [timerSeconds, setTimerSeconds] = useState<number>(0);
   const [micVolume, setMicVolume] = useState<number>(0);
+  const [activeQuestion, setActiveQuestion] = useState<string>("");
+  const [currentTopic, setCurrentTopic] = useState<string>("Introduction");
+  const [currentTopicIndex, setCurrentTopicIndex] = useState<number>(0);
+  const [followUpCount, setFollowUpCount] = useState<number>(0);
+  const [clarificationAttempted, setClarificationAttempted] = useState<boolean>(false);
+  const [interviewRounds, setInterviewRounds] = useState<string[]>([]);
+  const isCandidateProcessingRef = useRef<boolean>(false);
+  const consecutiveSilenceRef = useRef<number>(0);
 
   // Subtitles
   const [aiCurrentSubtitle, setAiCurrentSubtitle] = useState<string>("");
@@ -113,7 +152,7 @@ export default function InterviewPage() {
 
   // Internal Turn Logs
   const [historyTurns, setHistoryTurns] = useState<
-    Array<{ id: string; speaker: "ai" | "candidate"; text: string; timestamp: string }>
+    Array<{ id: string; speaker: "ai" | "candidate"; text: string; timestamp: string; topic?: string; difficulty?: string }>
   >([]);
 
   // Post-Interview Evaluation State
@@ -272,7 +311,7 @@ export default function InterviewPage() {
 
   // Interview Duration Timer with automatic conclusion when time expires
   useEffect(() => {
-    if (isInterviewActive) {
+    if (isInterviewActive && !isPaused) {
       const maxSeconds = (formData.durationMinutes || 15) * 60;
       timerIntervalRef.current = setInterval(() => {
         setTimerSeconds((prev) => {
@@ -288,12 +327,26 @@ export default function InterviewPage() {
       }, 1000);
     } else {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-      setTimerSeconds(0);
     }
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     };
-  }, [isInterviewActive, formData.durationMinutes]);
+  }, [isInterviewActive, isPaused, formData.durationMinutes]);
+
+  const togglePauseResume = () => {
+    if (isPaused) {
+      setIsPaused(false);
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getAudioTracks().forEach((t) => (t.enabled = !isMuted));
+      }
+    } else {
+      setIsPaused(true);
+      stopAiSpeech();
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getAudioTracks().forEach((t) => (t.enabled = false));
+      }
+    }
+  };
 
   const formatTimer = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -313,11 +366,44 @@ export default function InterviewPage() {
       .catch(() => {});
   }, []);
 
-  // Initialize Web Speech Synthesis
+  // Initialize Web Speech Synthesis & comprehensive component unmount cleanup
   useEffect(() => {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       synthRef.current = window.speechSynthesis;
     }
+
+    return () => {
+      // 1. Release microphone tracks
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+      }
+      // 2. Close Deepgram WebSocket connection
+      if (deepgramSocketRef.current) {
+        try { deepgramSocketRef.current.close(); } catch {}
+        deepgramSocketRef.current = null;
+      }
+      // 3. Stop speech recognition
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch {}
+        recognitionRef.current = null;
+      }
+      // 4. Cancel Speech Synthesis & audio playback
+      if (synthRef.current) {
+        try { synthRef.current.cancel(); } catch {}
+      }
+      if (currentAudioRef.current) {
+        try {
+          currentAudioRef.current.pause();
+          currentAudioRef.current.currentTime = 0;
+        } catch {}
+        currentAudioRef.current = null;
+      }
+      // 5. Clear intervals & animation frames
+      if (aiSubtitleIntervalRef.current) clearInterval(aiSubtitleIntervalRef.current);
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (animFrameVolumeRef.current) cancelAnimationFrame(animFrameVolumeRef.current);
+    };
   }, []);
 
   // Real Microphone Volume Meter
@@ -351,7 +437,16 @@ export default function InterviewPage() {
   };
 
   // Stop AI Audio Immediately on Interruption
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+
   const stopAiSpeech = useCallback(() => {
+    if (currentAudioRef.current) {
+      try {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.currentTime = 0;
+      } catch {}
+      currentAudioRef.current = null;
+    }
     if (synthRef.current) synthRef.current.cancel();
     if (aiSubtitleIntervalRef.current) clearInterval(aiSubtitleIntervalRef.current);
     setIsAiSpeaking(false);
@@ -359,175 +454,370 @@ export default function InterviewPage() {
     setAiCurrentSubtitle("");
   }, []);
 
-  // Progressive Audio-Synchronized Speech & Subtitles
-  const speakAiResponse = useCallback((fullText: string) => {
+  // Progressive Audio-Synchronized Speech & Subtitles via Deepgram TTS (with Web Speech fallback)
+  const speakAiResponse = useCallback((fullText: string, onSpeechEnd?: () => void) => {
     stopAiSpeech();
 
     const words = fullText.split(/\s+/).filter(Boolean);
     if (words.length === 0) return;
 
+    setActiveQuestion(fullText);
+    setAgentState("ASKING");
     setIsAiSpeaking(true);
     setIsAiThinking(false);
     setAiCurrentSubtitle("");
 
-    if (synthRef.current) {
-      const utterance = new SpeechSynthesisUtterance(fullText);
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-      utterance.lang = formData.language === "Hindi" ? "hi-IN" : "en-US";
+    // Callback when speech concludes to switch state machine to LISTENING
+    const handlePlaybackFinished = () => {
+      setIsAiSpeaking(false);
+      setAgentState("LISTENING");
+      setAiCurrentSubtitle(fullText);
+      setHistoryTurns((prev) => [
+        ...prev,
+        {
+          id: `ai-${Date.now()}`,
+          speaker: "ai",
+          text: fullText,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          topic: currentTopic,
+        },
+      ]);
+      setTimeout(() => setAiCurrentSubtitle(""), 600);
+      if (onSpeechEnd) onSpeechEnd();
+    };
 
-      const voices = synthRef.current.getVoices();
-      const preferredVoice = voices.find(
-        (v) =>
-          (v.name.includes("Google") || v.name.includes("Natural") || v.name.includes("Samantha") || v.name.includes("Daniel") || v.name.includes("David")) &&
-          v.lang.startsWith("en")
-      );
-      if (preferredVoice) utterance.voice = preferredVoice;
-
-      let boundaryFired = false;
-      utterance.onboundary = (event) => {
-        if (event.name === "word") {
-          boundaryFired = true;
-          const charIndex = event.charIndex;
-          const nextSpace = fullText.indexOf(" ", charIndex);
-          const currentLength = nextSpace !== -1 ? nextSpace : fullText.length;
-          setAiCurrentSubtitle(fullText.slice(0, currentLength));
-        }
-      };
-
-      utterance.onstart = () => {
-        setIsAiSpeaking(true);
-        let currentWordIdx = 0;
-        const totalDurationEstimate = (words.length / 2.7) * 1000;
-        const intervalDelay = Math.max(80, totalDurationEstimate / words.length);
-
-        aiSubtitleIntervalRef.current = setInterval(() => {
-          if (!boundaryFired) {
-            currentWordIdx += 1;
-            setAiCurrentSubtitle(words.slice(0, currentWordIdx).join(" "));
-            if (currentWordIdx >= words.length) {
-              clearInterval(aiSubtitleIntervalRef.current);
-            }
-          }
-        }, intervalDelay);
-      };
-
-      utterance.onend = () => {
-        if (aiSubtitleIntervalRef.current) clearInterval(aiSubtitleIntervalRef.current);
-        setIsAiSpeaking(false);
-        setAiCurrentSubtitle(fullText);
-
-        setHistoryTurns((prev) => [
-          ...prev,
-          {
-            id: `ai-${Date.now()}`,
-            speaker: "ai",
+    // Attempt high-definition Deepgram TTS first
+    const playDeepgramAudio = async () => {
+      try {
+        const ttsResponse = await fetch("/api/interviews/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
             text: fullText,
-            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          },
-        ]);
+            model: "aura-asteria-en",
+          }),
+        });
 
-        setTimeout(() => setAiCurrentSubtitle(""), 600);
-      };
+        if (ttsResponse.ok) {
+          const audioBlob = await ttsResponse.blob();
+          const audioUrl = URL.createObjectURL(audioBlob);
+          const audio = new Audio(audioUrl);
+          currentAudioRef.current = audio;
 
-      utterance.onerror = () => {
-        if (aiSubtitleIntervalRef.current) clearInterval(aiSubtitleIntervalRef.current);
-        setIsAiSpeaking(false);
-      };
+          // Progressive subtitle typewriter sync with audio playback
+          audio.onplay = () => {
+            setIsAiSpeaking(true);
+            setAgentState("ASKING");
+            let currentWordIdx = 0;
+            const totalDurationEstimate = Math.max(1200, (words.length / 2.6) * 1000);
+            const intervalDelay = Math.max(60, totalDurationEstimate / words.length);
 
-      synthRef.current.speak(utterance);
-    } else {
-      let currentWordIdx = 0;
-      aiSubtitleIntervalRef.current = setInterval(() => {
-        currentWordIdx += 1;
-        setAiCurrentSubtitle(words.slice(0, currentWordIdx).join(" "));
-        if (currentWordIdx >= words.length) {
-          clearInterval(aiSubtitleIntervalRef.current);
-          setIsAiSpeaking(false);
-          setHistoryTurns((prev) => [
-            ...prev,
-            {
-              id: `ai-${Date.now()}`,
-              speaker: "ai",
-              text: fullText,
-              timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-            },
-          ]);
+            aiSubtitleIntervalRef.current = setInterval(() => {
+              currentWordIdx += 1;
+              setAiCurrentSubtitle(words.slice(0, currentWordIdx).join(" "));
+              if (currentWordIdx >= words.length) {
+                if (aiSubtitleIntervalRef.current) clearInterval(aiSubtitleIntervalRef.current);
+              }
+            }, intervalDelay);
+          };
+
+          audio.onended = () => {
+            if (aiSubtitleIntervalRef.current) clearInterval(aiSubtitleIntervalRef.current);
+            handlePlaybackFinished();
+            URL.revokeObjectURL(audioUrl);
+            currentAudioRef.current = null;
+          };
+
+          audio.onerror = () => {
+            // Fallback to browser SpeechSynthesis
+            fallbackToWebSpeech();
+          };
+
+          await audio.play();
+          return;
+        } else {
+          fallbackToWebSpeech();
         }
-      }, 150);
-    }
-  }, [stopAiSpeech, formData.language]);
+      } catch (err) {
+        fallbackToWebSpeech();
+      }
+    };
+
+    const fallbackToWebSpeech = () => {
+      if (synthRef.current) {
+        const utterance = new SpeechSynthesisUtterance(fullText);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        utterance.lang = formData.language === "Hindi" ? "hi-IN" : "en-US";
+
+        const voices = synthRef.current.getVoices();
+        const preferredVoice = voices.find(
+          (v) =>
+            (v.name.includes("Google") || v.name.includes("Natural") || v.name.includes("Samantha") || v.name.includes("Daniel") || v.name.includes("David")) &&
+            v.lang.startsWith("en")
+        );
+        if (preferredVoice) utterance.voice = preferredVoice;
+
+        let boundaryFired = false;
+        utterance.onboundary = (event) => {
+          if (event.name === "word") {
+            boundaryFired = true;
+            const charIndex = event.charIndex;
+            const nextSpace = fullText.indexOf(" ", charIndex);
+            const currentLength = nextSpace !== -1 ? nextSpace : fullText.length;
+            setAiCurrentSubtitle(fullText.slice(0, currentLength));
+          }
+        };
+
+        utterance.onstart = () => {
+          setIsAiSpeaking(true);
+          setAgentState("ASKING");
+          let currentWordIdx = 0;
+          const totalDurationEstimate = (words.length / 2.7) * 1000;
+          const intervalDelay = Math.max(80, totalDurationEstimate / words.length);
+
+          aiSubtitleIntervalRef.current = setInterval(() => {
+            if (!boundaryFired) {
+              currentWordIdx += 1;
+              setAiCurrentSubtitle(words.slice(0, currentWordIdx).join(" "));
+              if (currentWordIdx >= words.length) {
+                clearInterval(aiSubtitleIntervalRef.current);
+              }
+            }
+          }, intervalDelay);
+        };
+
+        utterance.onend = () => {
+          if (aiSubtitleIntervalRef.current) clearInterval(aiSubtitleIntervalRef.current);
+          handlePlaybackFinished();
+        };
+
+        utterance.onerror = () => {
+          if (aiSubtitleIntervalRef.current) clearInterval(aiSubtitleIntervalRef.current);
+          handlePlaybackFinished();
+        };
+
+        synthRef.current.speak(utterance);
+      } else {
+        let currentWordIdx = 0;
+        aiSubtitleIntervalRef.current = setInterval(() => {
+          currentWordIdx += 1;
+          setAiCurrentSubtitle(words.slice(0, currentWordIdx).join(" "));
+          if (currentWordIdx >= words.length) {
+            clearInterval(aiSubtitleIntervalRef.current);
+            handlePlaybackFinished();
+          }
+        }, 150);
+      }
+    };
+
+    playDeepgramAudio();
+  }, [stopAiSpeech, formData.language, currentTopic]);
 
   // Process Candidate Transcript & Contextual AI Response
   const handleCandidateFinishedSpeaking = useCallback(
     async (finalTranscript: string) => {
+      // Guard against race conditions and concurrent processing
+      if (isCandidateProcessingRef.current) return;
       const trimmed = finalTranscript.trim();
-      if (!trimmed || trimmed.length < 2) return;
+      
+      // Handle silence / short / empty answers
+      const wordCount = trimmed ? trimmed.split(/\s+/).filter(Boolean).length : 0;
+      if (wordCount < 2) {
+        if (!clarificationAttempted) {
+          setClarificationAttempted(true);
+          setAgentState("ASKING");
+          speakAiResponse(
+            formData.language === "Hindi"
+              ? "Kripya thoda aur detail mein batayein, taaki hum aapke answer ka mulyankan kar sakein."
+              : "I didn't quite catch that. Could you please elaborate a bit more on your response?"
+          );
+          return;
+        } else {
+          // If already tried clarification, move forward to avoid getting stuck
+          setClarificationAttempted(false);
+        }
+      }
 
+      isCandidateProcessingRef.current = true;
+      setAgentState("EVALUATING");
+      setIsCandidateSpeaking(false);
+      setIsAiThinking(true);
+      setCandidateLiveSubtitle("");
+      setCandidateInterimSubtitle("");
+
+      const candidateTurnId = `cand-${Date.now()}`;
       const newHistory = [
         ...historyTurns,
         {
-          id: `cand-${Date.now()}`,
+          id: candidateTurnId,
           speaker: "candidate" as const,
           text: trimmed,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          topic: currentTopic,
         },
       ];
       setHistoryTurns(newHistory);
-      setCandidateLiveSubtitle("");
-      setCandidateInterimSubtitle("");
-      setIsCandidateSpeaking(false);
-      setIsAiThinking(true);
 
       // Persist turn to Supabase
       try {
-        if (user?.id) {
+        if (user?.id && sessionId) {
           await supabase.from("interview_messages").insert({
-            session_id: sessionId || null,
+            session_id: sessionId,
             sender: "student",
             content: trimmed,
           });
         }
-      } catch {}
+      } catch (dbErr) {
+        console.warn("Message insert non-blocking failure:", dbErr);
+      }
 
       try {
         const res = await axios.post("/api/interviews/chat", {
           message: trimmed,
+          candidate_name: formData.fullName,
           interview_type: formData.interviewType,
           experience_level: formData.experienceLevel,
           job_role: formData.targetRole,
           language: formData.language,
           duration_minutes: formData.durationMinutes,
+          job_description: formData.jobDescription,
           history: newHistory,
+          current_topic_index: currentTopicIndex,
+          follow_up_count: followUpCount,
         });
 
         setIsAiThinking(false);
-        const replyText = res.data?.reply || "Understood. Can you walk me through the key technical constraints and architectural trade-offs you faced?";
-        speakAiResponse(replyText);
+        const data = res.data;
+        const nextAction: "FOLLOW_UP" | "NEXT_QUESTION" | "END_INTERVIEW" = data?.action || "NEXT_QUESTION";
+        const replyQuestion = data?.question || "Thank you. Let's move on to discuss how you handle deployment and production resilience.";
+        const returnedTopic = data?.topic || currentTopic;
+
+        if (nextAction === "FOLLOW_UP") {
+          setAgentState("FOLLOW_UP");
+          setFollowUpCount((prev) => prev + 1);
+        } else if (nextAction === "NEXT_QUESTION") {
+          setAgentState("NEXT_QUESTION");
+          setCurrentTopicIndex((prev) => prev + 1);
+          setCurrentTopic(returnedTopic);
+          setFollowUpCount(0);
+          setClarificationAttempted(false);
+        } else if (nextAction === "END_INTERVIEW") {
+          setAgentState("CLOSING");
+          speakAiResponse(replyQuestion, () => {
+            setTimeout(() => {
+              handleEndInterview();
+            }, 1200);
+          });
+          isCandidateProcessingRef.current = false;
+          return;
+        }
+
+        speakAiResponse(replyQuestion);
 
         try {
-          if (user?.id) {
+          if (user?.id && sessionId) {
             await supabase.from("interview_messages").insert({
-              session_id: sessionId || null,
+              session_id: sessionId,
               sender: "ai",
-              content: replyText,
+              content: replyQuestion,
+              question_type: nextAction.toLowerCase(),
             });
           }
         } catch {}
       } catch (err) {
         setIsAiThinking(false);
-        speakAiResponse("Insightful point. Could you elaborate on how you address edge-case failures and observability in that scenario?");
+        setAgentState("NEXT_QUESTION");
+        setCurrentTopicIndex((prev) => prev + 1);
+        setFollowUpCount(0);
+        speakAiResponse(
+          formData.language === "Hindi"
+            ? "Dhanyawaad. Agle topic par aage badhte hue, production monitoring aur system metrics ke baare mein aapka kya anubhav hai?"
+            : "Understood. Moving forward to our next area: could you explain how you design for reliability and monitor production performance?"
+        );
+      } finally {
+        isCandidateProcessingRef.current = false;
       }
     },
-    [historyTurns, formData, sessionId, speakAiResponse, user?.id]
+    [
+      historyTurns,
+      formData,
+      sessionId,
+      currentTopic,
+      currentTopicIndex,
+      followUpCount,
+      clarificationAttempted,
+      speakAiResponse,
+      user?.id,
+    ]
   );
+
+  // Web Speech Recognition (Fallback STT)
+  const initWebSpeechRecognition = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    // Clean up any existing recognition instance to prevent duplicate listeners
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {}
+      recognitionRef.current = null;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = formData.language === "Hindi" ? "hi-IN" : "en-US";
+
+    let debounceTimer: any = null;
+    let accumulatedFinal = "";
+
+    recognition.onresult = (event: any) => {
+      if (isPaused || isMuted || isAiSpeaking || isAiThinking) return;
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        const item = event.results[i];
+        if (item.isFinal) accumulatedFinal += (accumulatedFinal ? " " : "") + item[0].transcript;
+        else interim += item[0].transcript;
+      }
+
+      if (interim || accumulatedFinal) {
+        setAgentState("TRANSCRIBING");
+        setIsCandidateSpeaking(true);
+      }
+
+      setCandidateLiveSubtitle(accumulatedFinal);
+      setCandidateInterimSubtitle(interim);
+
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        const fullTurn = (accumulatedFinal + " " + interim).trim();
+        if (fullTurn.length > 2) {
+          accumulatedFinal = "";
+          handleCandidateFinishedSpeaking(fullTurn);
+        }
+      }, 1600);
+    };
+
+    recognition.onerror = () => setIsCandidateSpeaking(false);
+    recognition.onend = () => {
+      if (isInterviewActive && !isMuted && !isPaused) {
+        try { recognition.start(); } catch {}
+      }
+    };
+
+    recognitionRef.current = recognition;
+    try { recognition.start(); } catch {}
+  }, [isInterviewActive, isMuted, isPaused, isAiSpeaking, stopAiSpeech, handleCandidateFinishedSpeaking, formData.language]);
 
   // Deepgram WebSocket Connection
   const connectDeepgramStreaming = useCallback(
     (stream: MediaStream, apiKey: string) => {
       try {
         const socket = new WebSocket(
-          "wss://api.deepgram.com/v1/listen?punctuate=true&interim_results=true&encoding=linear16&sample_rate=16000",
+          "wss://api.deepgram.com/v1/listen?punctuate=true&interim_results=true&encoding=linear16&sample_rate=16000&smart_format=true&endpointing=300",
           ["token", apiKey]
         );
 
@@ -542,6 +832,7 @@ export default function InterviewPage() {
 
           processor.onaudioprocess = (e) => {
             if (socket.readyState !== WebSocket.OPEN) return;
+            if (isPaused || isMuted || isAiSpeaking || isAiThinking) return;
             const inputData = e.inputBuffer.getChannelData(0);
             const pcm16 = new Int16Array(inputData.length);
             for (let i = 0; i < inputData.length; i++) {
@@ -552,18 +843,40 @@ export default function InterviewPage() {
           };
         };
 
+        let speechEndDebounce: any = null;
+        let accumulatedTranscript = "";
+
         socket.onmessage = (messageEvent) => {
           try {
+            // Ignore any residual incoming speech if AI is speaking or thinking
+            if (isAiSpeaking || isAiThinking) return;
+
             const data = JSON.parse(messageEvent.data);
             const transcript = data.channel?.alternatives?.[0]?.transcript;
-            if (transcript) {
-              if (isAiSpeaking) stopAiSpeech();
+            if (transcript && transcript.trim().length > 0) {
+              setAgentState("TRANSCRIBING");
               setIsCandidateSpeaking(true);
 
               if (data.is_final) {
-                setCandidateLiveSubtitle((prev) => (prev ? `${prev} ${transcript}` : transcript));
+                accumulatedTranscript = accumulatedTranscript ? `${accumulatedTranscript} ${transcript}` : transcript;
+                setCandidateLiveSubtitle(accumulatedTranscript);
                 setCandidateInterimSubtitle("");
-                if (data.speech_final) handleCandidateFinishedSpeaking(transcript);
+
+                if (speechEndDebounce) clearTimeout(speechEndDebounce);
+
+                if (data.speech_final) {
+                  const sendText = accumulatedTranscript;
+                  accumulatedTranscript = "";
+                  handleCandidateFinishedSpeaking(sendText);
+                } else {
+                  speechEndDebounce = setTimeout(() => {
+                    if (accumulatedTranscript.trim().length > 2) {
+                      const sendText = accumulatedTranscript;
+                      accumulatedTranscript = "";
+                      handleCandidateFinishedSpeaking(sendText);
+                    }
+                  }, 1800);
+                }
               } else {
                 setCandidateInterimSubtitle(transcript);
               }
@@ -577,59 +890,8 @@ export default function InterviewPage() {
         initWebSpeechRecognition();
       }
     },
-    [isAiSpeaking, stopAiSpeech, handleCandidateFinishedSpeaking]
+    [isAiSpeaking, isPaused, isMuted, stopAiSpeech, handleCandidateFinishedSpeaking, initWebSpeechRecognition]
   );
-
-  // Web Speech Fallback
-  const initWebSpeechRecognition = useCallback(() => {
-    if (typeof window === "undefined") return;
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = formData.language === "Hindi" ? "hi-IN" : "en-US";
-
-    let debounceTimer: any = null;
-    let accumulatedFinal = "";
-
-    recognition.onresult = (event: any) => {
-      let interim = "";
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        const item = event.results[i];
-        if (item.isFinal) accumulatedFinal += (accumulatedFinal ? " " : "") + item[0].transcript;
-        else interim += item[0].transcript;
-      }
-
-      if (interim || accumulatedFinal) {
-        if (isAiSpeaking) stopAiSpeech();
-        setIsCandidateSpeaking(true);
-      }
-
-      setCandidateLiveSubtitle(accumulatedFinal);
-      setCandidateInterimSubtitle(interim);
-
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
-        const fullTurn = (accumulatedFinal + " " + interim).trim();
-        if (fullTurn.length > 3) {
-          accumulatedFinal = "";
-          handleCandidateFinishedSpeaking(fullTurn);
-        }
-      }, 1600);
-    };
-
-    recognition.onerror = () => setIsCandidateSpeaking(false);
-    recognition.onend = () => {
-      if (isInterviewActive && !isMuted) {
-        try { recognition.start(); } catch {}
-      }
-    };
-
-    recognitionRef.current = recognition;
-    try { recognition.start(); } catch {}
-  }, [isInterviewActive, isMuted, isAiSpeaking, stopAiSpeech, handleCandidateFinishedSpeaking, formData.language]);
 
   // Pre-Interview Form Validation & Blur
   const [formTouched, setFormTouched] = useState<Record<string, boolean>>({});
@@ -727,6 +989,10 @@ export default function InterviewPage() {
 
       setSessionId(newSessionId);
       setIsInterviewActive(true);
+      setAgentState("INTRODUCTION");
+      setCurrentTopicIndex(0);
+      setFollowUpCount(0);
+      setClarificationAttempted(false);
       setTimerSeconds(0);
       setHistoryTurns([]);
       setAiCurrentSubtitle("");
@@ -736,26 +1002,52 @@ export default function InterviewPage() {
       setIsModalOpen(false);
       setIsAiThinking(true);
 
-      // 5. Automatic Natural Human-Style Opening Greeting & First Question
-      setTimeout(() => {
+      // 5. Dynamic Opening Greeting & Role-Calibrated First Question via Mistral AI
+      try {
+        const openingRes = await axios.post("/api/interviews/chat", {
+          message: `Hello, my name is ${formData.fullName.trim()}. I am ready for my ${formData.interviewType} interview for the ${formData.targetRole} role.`,
+          candidate_name: formData.fullName,
+          interview_type: formData.interviewType,
+          experience_level: formData.experienceLevel,
+          job_role: formData.targetRole,
+          language: formData.language,
+          duration_minutes: formData.durationMinutes,
+          job_description: formData.jobDescription,
+          history: [],
+          current_topic_index: 0,
+          follow_up_count: 0,
+          is_first_question: true,
+        });
+
+        setIsAiThinking(false);
+        const openingData = openingRes.data;
+        const openingQuestion = openingData?.question || 
+          `Hello ${formData.fullName.trim()}! Welcome to your ${formData.interviewType} interview for the ${formData.targetRole} position. To start, could you please introduce yourself and highlight a key project you worked on?`;
+        
+        if (openingData?.topic) setCurrentTopic(openingData.topic);
+
+        speakAiResponse(openingQuestion);
+
+        if (user?.id && newSessionId) {
+          await supabase.from("interview_messages").insert({
+            session_id: newSessionId,
+            sender: "ai",
+            content: openingQuestion,
+            question_type: "introduction",
+          });
+        }
+      } catch {
         setIsAiThinking(false);
         const nameToGreet = formData.fullName.trim();
-        let greeting = "";
-
-        if (formData.language === "Hindi") {
-          greeting = `Namaste ${nameToGreet}! Aapka mock interview session shuru karte hain. Kripya apna brief parichay dein aur batayein ki aapne recent projects mein kya kaam kiya hai?`;
-        } else if (formData.language === "Hinglish") {
-          greeting = `Hello ${nameToGreet}! Welcome to your mock interview session. Let's begin with a quick introduction. Could you tell me a little bit about yourself and your technical background?`;
-        } else {
-          greeting = `Good morning ${nameToGreet}! Welcome to your mock interview session. Let's begin with a quick introduction. Could you tell me a little bit about yourself and your background?`;
-        }
-
-        speakAiResponse(greeting);
-      }, 700);
+        const fallbackGreeting = formData.language === "Hindi"
+          ? `Namaste ${nameToGreet}! ${formData.targetRole} ke ${formData.interviewType} interview mein aapka swagat hai. Kripya apna parichay dein aur apne anubhav ke baare mein batayein.`
+          : `Hello ${nameToGreet}! Welcome to your ${formData.interviewType} interview for the ${formData.targetRole} role. Let's begin with a brief introduction: could you walk me through your engineering background and recent projects?`;
+        speakAiResponse(fallbackGreeting);
+      }
     } catch (err: any) {
       exitFullscreen();
       setFormErrors({
-        microphone: "Microphone permission is required to initialize JARVIS voice session. Please grant microphone access in your browser settings."
+        microphone: "Microphone permission is required to initialize AI voice session. Please grant microphone access in your browser settings."
       });
     } finally {
       setIsInitializing(false);
@@ -767,6 +1059,7 @@ export default function InterviewPage() {
     stopAiSpeech();
     stopVolumeMeter();
     setIsInterviewActive(false);
+    setIsPaused(false);
     setIsAiThinking(false);
     exitFullscreen();
 
@@ -790,12 +1083,17 @@ export default function InterviewPage() {
     setCandidateInterimSubtitle("");
 
     const candTurns = historyTurns.filter((h) => h.speaker === "candidate");
+    setAgentState("COMPLETED");
+
     if (candTurns.length >= 1) {
       try {
         const res = await axios.post("/api/interviews/evaluate", {
           history: historyTurns,
           topic: formData.targetRole,
+          interview_type: formData.interviewType,
+          experience_level: formData.experienceLevel,
           duration_seconds: timerSeconds,
+          job_description: formData.jobDescription,
         });
 
         setEvaluationData(res.data);
@@ -818,9 +1116,20 @@ export default function InterviewPage() {
           confidence_score: 85,
           duration_formatted: `${Math.floor(timerSeconds / 60)}m ${timerSeconds % 60}s`,
           total_turns: candTurns.length,
-          strengths: ["Clear contextual problem breakdown.", "Demonstrated natural conversational confidence."],
-          growth_areas: ["Incorporate more quantified metrics in architecture proposals."],
-          feedback_summary: "Strong performance with commendable domain grasp and conversational adaptability.",
+          strengths: [
+            "Clear contextual problem breakdown.",
+            "Demonstrated natural conversational confidence.",
+            "Good articulation of core trade-offs and concepts."
+          ],
+          growth_areas: [
+            "Incorporate more quantified metrics in architecture proposals.",
+            "Discuss disaster recovery and fault tolerance proactively."
+          ],
+          recommended_topics: [
+            "System Architecture & API Design",
+            "Concurrency and Bottleneck Diagnostics"
+          ],
+          feedback_summary: `Candidate demonstrated solid competence in ${formData.targetRole} (${formData.interviewType} track), achieving 84% overall. Thoughtful explanations were maintained across ${candTurns.length} turns.`,
         });
       }
 
@@ -842,46 +1151,32 @@ export default function InterviewPage() {
   return (
     <div
       ref={interviewContainerRef}
-      className={`relative flex flex-col justify-between items-center text-white overflow-hidden select-none transition-all duration-300 w-full ${
+      className={`relative flex flex-col justify-between items-center text-mainText overflow-hidden select-none transition-all duration-300 w-full ${
         isInterviewActive
-          ? "fixed inset-0 z-50 w-full h-full h-[100dvh] max-h-[100dvh] max-w-full bg-[#060913] p-3 sm:p-5 overflow-hidden"
+          ? "fixed inset-0 z-50 w-full h-full h-[100dvh] max-h-[100dvh] max-w-full bg-[#FAFDFA] p-3 sm:p-5 overflow-hidden"
           : "min-h-[calc(100vh-95px)] px-4 py-3"
       }`}
     >
-      {/* Background Futuristic Holographic Atmosphere */}
-      <div className="absolute inset-0 bg-[#050B18] -z-20 pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_85%_65%_at_50%_35%,rgba(22,119,255,0.18),rgba(5,11,24,0.98))] -z-10 pointer-events-none" />
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(0,217,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,217,255,0.03)_1px,transparent_1px)] bg-[size:4rem_4rem] -z-10 pointer-events-none" />
+      {/* Background Soft White & Organic Light Green Blobs */}
+      <div className="absolute inset-0 bg-[#FAFDFA] -z-20 pointer-events-none" />
+      <div className="absolute top-[-10%] right-[-5%] w-[480px] h-[480px] rounded-full bg-emerald-200/35 blur-3xl -z-10 pointer-events-none" />
+      <div className="absolute bottom-[-10%] left-[-5%] w-[480px] h-[480px] rounded-full bg-green-200/35 blur-3xl -z-10 pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_85%_65%_at_50%_35%,rgba(34,197,94,0.06),rgba(250,253,250,0.98))] -z-10 pointer-events-none" />
 
       {/* Orbit curved energy rings in background */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[720px] h-[720px] rounded-full border border-cyan-500/10 pointer-events-none -z-10" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[980px] h-[980px] rounded-full border border-blue-500/10 pointer-events-none -z-10" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[720px] h-[720px] rounded-full border border-green-200/60 pointer-events-none -z-10" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[980px] h-[980px] rounded-full border border-emerald-100/60 pointer-events-none -z-10" />
 
       {/* 1. TOP HEADER (When Not In Active Fullscreen Interview) */}
       {!isInterviewActive && (
-        <header className="w-full max-w-6xl pb-3.5 mb-2 border-b border-blue-950/60 flex items-center justify-between gap-4 z-10 shrink-0">
+        <header className="w-full max-w-6xl pb-3.5 mb-2 border-b border-cardBorder flex items-center justify-between gap-4 z-10 shrink-0">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-mainText tracking-tight flex items-center gap-2">
               AI Mock Interview
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+            <p className="text-xs sm:text-sm text-mutedText mt-0.5">
               Practice real conversations. Get better. Land your dream role.
             </p>
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            <button 
-              className="p-2.5 rounded-xl bg-[#081426] border border-blue-500/20 text-slate-300 hover:text-white hover:border-blue-500/50 transition-all shadow-sm"
-              title="Notifications"
-            >
-              <Bell className="w-4 h-4 text-slate-300" />
-            </button>
-            <button 
-              className="p-2.5 rounded-xl bg-[#081426] border border-blue-500/20 text-cyan-400 hover:text-cyan-300 hover:border-cyan-500/50 transition-all shadow-sm"
-              title="Futuristic Theme Active"
-            >
-              <Moon className="w-4 h-4" />
-            </button>
           </div>
         </header>
       )}
@@ -889,20 +1184,20 @@ export default function InterviewPage() {
       {/* 2. ACTIVE FULLSCREEN HUD HEADER (Only while live interview is active) */}
       {isInterviewActive && (
         <header className="w-full max-w-5xl flex items-center justify-between gap-3 z-30 pt-2 px-3 shrink-0">
-          <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#081426]/90 border border-cyan-500/30 text-xs text-white backdrop-blur-md shadow-lg shadow-cyan-500/10">
-            <User className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="font-semibold text-white">{formData.fullName || "Candidate"}</span>
-            <span className="text-cyan-600">•</span>
-            <span className="text-slate-300 text-[11px]">{formData.targetRole}</span>
-            <span className="text-cyan-600">•</span>
-            <span className="text-cyan-400 font-mono text-[10px] uppercase font-bold tracking-wider">
+          <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-cardBorder text-xs text-mainText backdrop-blur-md shadow-soft-card">
+            <User className="w-3.5 h-3.5 text-primary" />
+            <span className="font-semibold text-mainText">{formData.fullName || "Candidate"}</span>
+            <span className="text-emerald-300">•</span>
+            <span className="text-mutedText text-[11px]">{formData.targetRole}</span>
+            <span className="text-emerald-300">•</span>
+            <span className="text-primary font-mono text-[10px] uppercase font-bold tracking-wider">
               {formData.interviewType}
             </span>
           </div>
 
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#081426]/90 border border-cyan-500/40 text-xs font-mono text-cyan-300 shadow-inner backdrop-blur-md">
-              <Clock className="w-3.5 h-3.5 text-cyan-400" />
+            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white border border-cardBorder text-xs font-mono text-primary font-bold shadow-soft-card">
+              <Clock className="w-3.5 h-3.5 text-primary" />
               <span>{formatTimer(timerSeconds)} / {formData.durationMinutes}m</span>
             </div>
             <button
@@ -911,17 +1206,17 @@ export default function InterviewPage() {
                 else enterFullscreen();
               }}
               title={isNativeFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-              className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition flex items-center gap-1.5 text-xs font-mono"
+              className="px-3 py-1.5 rounded-xl bg-white hover:bg-green-50 border border-cardBorder text-mutedText hover:text-mainText transition flex items-center gap-1.5 text-xs font-mono shadow-soft-card"
             >
               {isNativeFullscreen ? (
                 <>
-                  <Minimize2 className="w-3.5 h-3.5 text-cyan-400" />
-                  <span className="text-[11px] font-bold text-cyan-300">Exit</span>
+                  <Minimize2 className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-[11px] font-bold text-primary">Exit</span>
                 </>
               ) : (
                 <>
-                  <Maximize2 className="w-3.5 h-3.5 text-gray-400" />
-                  <span className="text-[11px] font-bold text-gray-300">Fullscreen</span>
+                  <Maximize2 className="w-3.5 h-3.5 text-mutedText" />
+                  <span className="text-[11px] font-bold text-mutedText">Fullscreen</span>
                 </>
               )}
             </button>
@@ -933,15 +1228,15 @@ export default function InterviewPage() {
       {!isInterviewActive && (
         <div className="w-full max-w-4xl flex flex-col items-center justify-center gap-3.5 z-10 my-1 shrink-0">
           {/* Candidate Information Pill */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#081426]/90 border border-cyan-500/30 text-xs text-slate-200 backdrop-blur-md shadow-lg shadow-cyan-500/5">
-            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-            <span className="font-bold text-white tracking-wide">{formData.fullName || "Candidate"}</span>
-            <span className="text-cyan-700 font-bold">•</span>
-            <span className="text-cyan-300 text-xs font-medium">{formData.targetRole || "Software Developer"}</span>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-cardBorder text-xs text-mainText backdrop-blur-md shadow-soft-card">
+            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            <span className="font-bold text-mainText tracking-wide">{formData.fullName || "Candidate"}</span>
+            <span className="text-emerald-300 font-bold">•</span>
+            <span className="text-primary text-xs font-semibold">{formData.targetRole || "Software Developer"}</span>
           </div>
 
           {/* Futuristic Capsule Mode Navigation */}
-          <div className="flex bg-[#081426] p-1 rounded-full border border-blue-500/30 shrink-0 shadow-lg shadow-blue-500/10">
+          <div className="flex bg-white p-1 rounded-full border border-cardBorder shrink-0 shadow-soft-card">
             <button
               onClick={() => {
                 setActiveTab("interview");
@@ -949,11 +1244,11 @@ export default function InterviewPage() {
               }}
               className={`flex items-center gap-2 px-5 py-2 rounded-full text-xs font-bold transition-all duration-300 ${
                 activeTab === "interview"
-                  ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-md shadow-blue-500/30"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-primary text-white shadow-button-primary"
+                  : "text-mutedText hover:text-mainText hover:bg-green-50"
               }`}
             >
-              <Radio className="w-3.5 h-3.5 text-cyan-300" />
+              <Radio className="w-3.5 h-3.5 text-white" />
               <span>Live Voice Arena</span>
             </button>
             <button
@@ -963,11 +1258,11 @@ export default function InterviewPage() {
               }}
               className={`flex items-center gap-2 px-5 py-2 rounded-full text-xs font-bold transition-all duration-300 ${
                 activeTab === "timemachine"
-                  ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/30"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-primary text-white shadow-button-primary"
+                  : "text-mutedText hover:text-mainText hover:bg-green-50"
               }`}
             >
-              <GitBranch className="w-3.5 h-3.5 text-purple-300" />
+              <GitBranch className="w-3.5 h-3.5 text-primary" />
               <span>Time Machine</span>
             </button>
           </div>
@@ -978,20 +1273,20 @@ export default function InterviewPage() {
       {!isInterviewActive && activeTab === "timemachine" ? (
         <main className="flex-1 w-full max-w-5xl flex flex-col justify-start relative z-10 py-4 space-y-6">
           {/* Header Banner */}
-          <div className="bg-secondaryBg/80 backdrop-blur-xl p-5 sm:p-6 rounded-2xl border border-cardBorder shadow-xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-cardBorder shadow-soft-card relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/5 rounded-full blur-3xl pointer-events-none" />
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-purple-500/15 text-purple-400 border border-purple-500/30">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-green-50 text-primary border border-green-200">
                     Non-Linear Playback Engine
                   </span>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/25">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200">
                     Live Score Delta Active
                   </span>
                 </div>
-                <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2.5">
-                  <GitBranch className="w-6 h-6 text-purple-400" /> Interview Time Machine
+                <h2 className="text-xl sm:text-2xl font-black text-mainText flex items-center gap-2.5">
+                  <GitBranch className="w-6 h-6 text-primary" /> Interview Time Machine
                 </h2>
                 <p className="text-xs sm:text-sm text-mutedText mt-1">
                   Rewind any question from your mock sessions, test alternative responses, and simulate instant AI scoring deltas.
@@ -1003,7 +1298,7 @@ export default function InterviewPage() {
                   setActiveTab("interview");
                   setIsModalOpen(true);
                 }}
-                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-lg shadow-purple-500/20 border border-purple-400/30 shrink-0 self-start sm:self-auto transition"
+                className="btn-primary text-xs px-4 py-2.5 rounded-xl flex items-center gap-2 shrink-0 self-start sm:self-auto"
               >
                 <Play className="w-3.5 h-3.5 fill-current" /> Launch Live Interview
               </button>
@@ -1012,7 +1307,7 @@ export default function InterviewPage() {
             {/* Turn Timeline Scrubber */}
             <div className="mt-6 pt-5 border-t border-cardBorder">
               <div className="text-[11px] font-mono uppercase tracking-wider text-mutedText font-bold mb-3 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-purple-400" /> Session Timeline Scrubber
+                <Clock className="w-3.5 h-3.5 text-primary" /> Session Timeline Scrubber
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {timeMachineTurns.map((turn, idx) => {
@@ -1023,22 +1318,22 @@ export default function InterviewPage() {
                       onClick={() => handleSelectTmTurn(idx)}
                       className={`p-3.5 rounded-xl border text-left transition-all relative overflow-hidden ${
                         isSelected
-                          ? "bg-purple-600/15 border-purple-500/60 shadow-lg shadow-purple-500/10"
-                          : "bg-[#0A0E1A] border-cardBorder hover:border-gray-700 text-mutedText"
+                          ? "bg-green-50/80 border-primary shadow-soft-card"
+                          : "bg-white border-cardBorder hover:border-primary/40 text-mutedText"
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-mono font-bold text-purple-400 flex items-center gap-1.5">
+                        <span className="text-xs font-mono font-bold text-primary flex items-center gap-1.5">
                           <RotateCcw className="w-3 h-3" /> Turn {idx + 1}
                         </span>
-                        <span className="text-[10px] font-mono text-gray-500">{turn.timestamp}</span>
+                        <span className="text-[10px] font-mono text-mutedText">{turn.timestamp}</span>
                       </div>
-                      <p className="text-xs text-gray-300 font-medium line-clamp-2">
+                      <p className="text-xs text-mainText font-medium line-clamp-2">
                         {turn.question}
                       </p>
                       <div className="mt-2.5 flex items-center justify-between text-[11px] font-mono">
-                        <span className="text-rose-400 font-semibold">Orig: {turn.originalScore}%</span>
-                        <span className="text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
+                        <span className="text-rose-600 font-semibold">Orig: {turn.originalScore}%</span>
+                        <span className="text-primary font-bold bg-green-50 px-2 py-0.5 rounded border border-green-200">
                           Branch: {turn.branchScore}%
                         </span>
                       </div>
@@ -1052,46 +1347,46 @@ export default function InterviewPage() {
           {/* Turn Deep Dive & Branching Workspace */}
           <div className="grid lg:grid-cols-12 gap-6 items-start">
             {/* Left: Original Turn & AI Critique */}
-            <div className="lg:col-span-5 bg-secondaryBg/80 backdrop-blur-xl p-5 sm:p-6 rounded-2xl border border-cardBorder space-y-4 shadow-xl">
+            <div className="lg:col-span-5 bg-white p-5 sm:p-6 rounded-2xl border border-cardBorder space-y-4 shadow-soft-card">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-mono font-bold text-purple-400 uppercase tracking-wider">
+                <span className="text-xs font-mono font-bold text-primary uppercase tracking-wider">
                   Original Question #{selectedTmIndex + 1}
                 </span>
-                <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/30 font-bold">
+                <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200 font-bold">
                   Score: {timeMachineTurns[selectedTmIndex].originalScore}%
                 </span>
               </div>
 
               <div>
-                <h3 className="text-sm font-bold text-white leading-snug">
+                <h3 className="text-sm font-bold text-mainText leading-snug">
                   &ldquo;{timeMachineTurns[selectedTmIndex].question}&rdquo;
                 </h3>
               </div>
 
-              <div className="p-4 rounded-xl bg-[#0A0E1A] border border-cardBorder space-y-1.5">
-                <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider">Your Recorded Answer:</span>
-                <p className="text-xs text-gray-300 leading-relaxed italic">
+              <div className="p-4 rounded-xl bg-slate-50 border border-cardBorder space-y-1.5">
+                <span className="text-[10px] font-mono font-bold text-mutedText uppercase tracking-wider">Your Recorded Answer:</span>
+                <p className="text-xs text-mainText leading-relaxed italic">
                   &ldquo;{timeMachineTurns[selectedTmIndex].originalAnswer}&rdquo;
                 </p>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-rose-950/20 border border-rose-500/30 text-xs text-rose-300 space-y-1">
-                <span className="font-bold text-rose-400 flex items-center gap-1.5">
-                  <AlertCircle className="w-3.5 h-3.5 text-rose-400" /> Critical Scoring Flag:
+              <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 space-y-1">
+                <span className="font-bold text-rose-700 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 text-rose-600" /> Critical Scoring Flag:
                 </span>
                 <p className="leading-relaxed">{timeMachineTurns[selectedTmIndex].originalFeedback}</p>
               </div>
             </div>
 
             {/* Right: What-If Branch Editor & Score Delta Simulator */}
-            <div className="lg:col-span-7 bg-secondaryBg/80 backdrop-blur-xl p-5 sm:p-6 rounded-2xl border border-cardBorder space-y-5 shadow-xl">
+            <div className="lg:col-span-7 bg-white p-5 sm:p-6 rounded-2xl border border-cardBorder space-y-5 shadow-soft-card">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-400">
+                  <div className="p-2 rounded-xl bg-green-50 border border-green-200 text-primary">
                     <GitBranch className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-white text-sm">Branch Playground: Alternative Answer</h3>
+                    <h3 className="font-bold text-mainText text-sm">Branch Playground: Alternative Answer</h3>
                     <p className="text-[11px] text-mutedText">Refine your response and simulate live evaluator re-grading</p>
                   </div>
                 </div>
@@ -1099,7 +1394,7 @@ export default function InterviewPage() {
                 <button
                   onClick={handleSimulateBranch}
                   disabled={isSimulatingBranch}
-                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg shadow-purple-500/25 border border-purple-400/30 transition disabled:opacity-50 shrink-0"
+                  className="btn-primary text-xs px-4 py-2 rounded-xl flex items-center gap-2 disabled:opacity-50 shrink-0"
                 >
                   {isSimulatingBranch ? (
                     <>
@@ -1107,7 +1402,7 @@ export default function InterviewPage() {
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-3.5 h-3.5 text-amber-300" /> Simulate Branch Delta
+                      <Sparkles className="w-3.5 h-3.5 text-white" /> Simulate Branch Delta
                     </>
                   )}
                 </button>
@@ -1118,78 +1413,58 @@ export default function InterviewPage() {
                   value={branchDraftAnswer}
                   onChange={(e) => setBranchDraftAnswer(e.target.value)}
                   placeholder="Draft your alternative answer here..."
-                  className="w-full h-36 bg-[#0A0E1A] border border-cardBorder rounded-xl p-4 font-sans text-xs text-purple-100 focus:outline-none focus:border-purple-500 resize-none leading-relaxed"
+                  className="w-full h-36 bg-white border border-cardBorder rounded-xl p-4 font-sans text-xs text-mainText focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none leading-relaxed shadow-sm"
                 />
               </div>
 
               {/* Side-by-side Score Comparison Panel */}
-              <div className="p-4 rounded-xl bg-gradient-to-br from-purple-950/30 via-[#0A0E1A] to-[#0A0E1A] border border-purple-500/40 space-y-3.5">
+              <div className="p-4 rounded-xl bg-green-50/50 border border-green-200 space-y-3.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <TrendingUp className="w-4 h-4 text-emerald-400" />
+                  <span className="text-xs font-bold text-mainText flex items-center gap-1.5">
+                    <TrendingUp className="w-4 h-4 text-primary" />
                     Simulated Score Delta
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-green-100 text-primaryDark border border-green-200">
                       {evaluatedTurn.delta} Score Improvement
                     </span>
-                    <span className="text-sm font-black text-white font-mono">
+                    <span className="text-sm font-black text-mainText font-mono">
                       {evaluatedTurn.branchScore}%
                     </span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2.5 text-center">
-                  <div className="p-2 rounded-lg bg-white/5 border border-white/5">
+                  <div className="p-2 rounded-lg bg-white border border-cardBorder shadow-sm">
                     <span className="text-[10px] font-mono text-mutedText block">Clarity</span>
-                    <span className="text-xs font-bold text-white font-mono">{timeMachineTurns[selectedTmIndex].metrics.clarity}%</span>
+                    <span className="text-xs font-bold text-mainText font-mono">{timeMachineTurns[selectedTmIndex].metrics.clarity}%</span>
                   </div>
-                  <div className="p-2 rounded-lg bg-white/5 border border-white/5">
+                  <div className="p-2 rounded-lg bg-white border border-cardBorder shadow-sm">
                     <span className="text-[10px] font-mono text-mutedText block">Precision</span>
-                    <span className="text-xs font-bold text-emerald-400 font-mono">{timeMachineTurns[selectedTmIndex].metrics.precision}%</span>
+                    <span className="text-xs font-bold text-primary font-mono">{timeMachineTurns[selectedTmIndex].metrics.precision}%</span>
                   </div>
-                  <div className="p-2 rounded-lg bg-white/5 border border-white/5">
+                  <div className="p-2 rounded-lg bg-white border border-cardBorder shadow-sm">
                     <span className="text-[10px] font-mono text-mutedText block">Confidence</span>
-                    <span className="text-xs font-bold text-purple-300 font-mono">{timeMachineTurns[selectedTmIndex].metrics.confidence}%</span>
+                    <span className="text-xs font-bold text-emerald-700 font-mono">{timeMachineTurns[selectedTmIndex].metrics.confidence}%</span>
                   </div>
                 </div>
 
-                <p className="text-[11px] text-mutedText leading-relaxed pt-1 border-t border-white/5">
+                <p className="text-[11px] text-mutedText leading-relaxed pt-1 border-t border-cardBorder">
                   Branch response includes concrete technical mechanisms (CDC, Kafka events, exponential backoff) solving the previous architectural gap.
                 </p>
               </div>
             </div>
           </div>
         </main>
-      ) : (
-        /* CENTER: HORIZONTALLY AND VERTICALLY CENTERED FUTURISTIC AI ORB & STAGE */
+      ) : null}
+
+      {/* MAIN VOICE ARENA STAGE (When tab === "interview" or during active live interview) */}
+      {isInterviewActive || activeTab === "interview" ? (
+        /* CENTER: HORIZONTALLY AND VERTICALLY CENTERED AI ORB & STAGE */
         <main className="flex-1 w-full max-w-5xl flex flex-col items-center justify-center relative z-10 py-1 my-auto text-center">
-          {/* Central Stage Container with Subtle Symmetrical Connectors (Left & Right) */}
+          {/* Central Stage Container with Jarvis AI Orb */}
           <div className="relative w-full flex items-center justify-center">
-            {/* Left Decorative Information (Hidden on mobile) */}
-            {!isInterviewActive && (
-              <div className="hidden lg:flex flex-col items-end gap-16 absolute left-4 xl:left-8 top-1/2 -translate-y-1/2 select-none pointer-events-none">
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <p className="text-[11px] font-extrabold uppercase tracking-widest text-cyan-400 font-mono">Real Questions</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Adaptive Role Calibrated</p>
-                  </div>
-                  <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#00D9FF]" />
-                  <div className="w-12 h-px bg-gradient-to-r from-cyan-400/80 to-transparent" />
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <p className="text-[11px] font-extrabold uppercase tracking-widest text-blue-400 font-mono">Natural Conversation</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Real-Time Spoken Audio</p>
-                  </div>
-                  <div className="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-[0_0_8px_#2563EB]" />
-                  <div className="w-12 h-px bg-gradient-to-r from-blue-400/80 to-transparent" />
-                </div>
-              </div>
-            )}
-
-            {/* Centered Holographic AI Orb */}
+            {/* Centered AI Orb */}
             <div className="relative flex flex-col items-center justify-center">
               <JarvisOrb
                 isAiSpeaking={isAiSpeaking}
@@ -1199,49 +1474,26 @@ export default function InterviewPage() {
                 audioVolume={micVolume}
               />
             </div>
-
-            {/* Right Decorative Information (Hidden on mobile) */}
-            {!isInterviewActive && (
-              <div className="hidden lg:flex flex-col items-start gap-16 absolute right-4 xl:right-8 top-1/2 -translate-y-1/2 select-none pointer-events-none">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-px bg-gradient-to-l from-cyan-400/80 to-transparent" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#00D9FF]" />
-                  <div className="text-left">
-                    <p className="text-[11px] font-extrabold uppercase tracking-widest text-cyan-400 font-mono">Personalized Feedback</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Objective Scoring Metrics</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-px bg-gradient-to-l from-blue-400/80 to-transparent" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-[0_0_8px_#2563EB]" />
-                  <div className="text-left">
-                    <p className="text-[11px] font-extrabold uppercase tracking-widest text-blue-400 font-mono">Build Confidence</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Stress-Free Simulation</p>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* DYNAMIC CALL-TO-ACTION & READY PROMPT (When Interview is NOT active) */}
           {!isInterviewActive && (
             <div className="mt-4 sm:mt-6 flex flex-col items-center justify-center space-y-3 z-20">
               <div>
-                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight drop-shadow-md">
+                <h2 className="text-xl sm:text-2xl font-black text-mainText tracking-tight">
                   Your AI Interviewer is Ready
                 </h2>
-                <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-md mx-auto">
+                <p className="text-xs sm:text-sm text-mutedText mt-1 max-w-md mx-auto">
                   Click the button below to start a realistic, voice-based mock interview.
                 </p>
               </div>
 
-              {/* Large Premium Start Voice Interview Button matching reference */}
+              {/* Large Premium Start Voice Interview Button */}
               <motion.button
-                whileHover={{ scale: 1.03, boxShadow: "0 0 32px rgba(0,217,255,0.45)" }}
+                whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => setIsModalOpen(true)}
-                className="mt-2 bg-gradient-to-r from-cyan-400 via-blue-600 to-indigo-600 hover:from-cyan-300 hover:to-indigo-500 text-white font-extrabold text-sm sm:text-base px-8 py-3.5 rounded-full flex items-center gap-3 shadow-xl shadow-cyan-500/25 border border-cyan-300/40 transition-all duration-200"
+                className="btn-primary mt-2 text-sm sm:text-base px-8 py-3.5 rounded-full flex items-center gap-3 shadow-button-primary"
               >
                 <Mic className="w-5 h-5 text-white" />
                 <span>Start Voice Interview →</span>
@@ -1249,25 +1501,101 @@ export default function InterviewPage() {
             </div>
           )}
 
+          {/* ACTIVE INTERVIEW: DISPLAY CURRENT QUESTION BANNER & INTERVIEW PROGRESS */}
+          {isInterviewActive && (
+            <div className="w-full max-w-2xl px-4 my-2 z-20 space-y-2">
+              {/* Interview Progress Bar */}
+              <div className="w-full bg-green-100 rounded-full h-1.5 overflow-hidden">
+                <motion.div
+                  className="bg-primary h-full rounded-full transition-all duration-300"
+                  style={{
+                    width: `${Math.min(100, Math.round((timerSeconds / Math.max(1, (formData.durationMinutes || 15) * 60)) * 100))}%`
+                  }}
+                />
+              </div>
+
+              {/* Current Stage, Topic Pill & Speaking State */}
+              <div className="flex items-center justify-between text-[11px] font-mono px-1">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-green-50 text-primary border border-green-200">
+                    Stage: {agentState}
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full font-semibold text-slate-700 bg-white border border-cardBorder">
+                    Topic: {currentTopic}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {isAiSpeaking && (
+                    <span className="flex items-center gap-1.5 text-primary font-bold animate-pulse">
+                      <Sparkles className="w-3 h-3" /> AI Speaking
+                    </span>
+                  )}
+                  {isCandidateSpeaking && (
+                    <span className="flex items-center gap-1.5 text-emerald-600 font-bold animate-pulse">
+                      <Mic className="w-3 h-3" /> Candidate Speaking
+                    </span>
+                  )}
+                  {isAiThinking && (
+                    <span className="flex items-center gap-1.5 text-amber-600 font-bold">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Mistral AI Reasoning
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Active Current Question Card */}
+              {activeQuestion && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3.5 sm:p-4 rounded-2xl bg-white/95 border border-cardBorder shadow-soft-card text-left"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                      <Sparkles className="w-3 h-3 text-primary" /> Active Question
+                    </span>
+                    <span className="text-[10px] font-mono text-mutedText">
+                      Turn {historyTurns.filter(t => t.speaker === 'candidate').length + 1}
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm font-semibold text-mainText leading-snug">
+                    {activeQuestion}
+                  </p>
+                </motion.div>
+              )}
+            </div>
+          )}
+
           {/* REAL-TIME SYNCHRONIZED SUBTITLES (Only during Active Live Interview) */}
           {isInterviewActive && (
-            <div className="w-full max-w-2xl min-h-[72px] max-h-[16vh] flex items-center justify-center text-center px-4 mt-3 overflow-hidden shrink-0 z-20">
+            <div className="w-full max-w-2xl min-h-[72px] max-h-[16vh] flex items-center justify-center text-center px-4 mt-2 overflow-hidden shrink-0 z-20">
               <AnimatePresence mode="wait">
-                {aiCurrentSubtitle ? (
+                {isPaused ? (
+                  <motion.div
+                    key="paused-sub"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex items-center justify-center gap-2 text-xs font-mono text-amber-700 bg-amber-50 px-4 py-2 rounded-xl border border-amber-200"
+                  >
+                    <Pause className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Interview session paused. Click Resume to continue.</span>
+                  </motion.div>
+                ) : aiCurrentSubtitle ? (
                   <motion.div
                     key="ai-sub"
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    className="space-y-0.5 max-h-full overflow-hidden"
+                    className="space-y-0.5 max-h-full overflow-hidden bg-white/95 px-6 py-2.5 rounded-2xl border border-cardBorder shadow-soft-card"
                   >
-                    <span className="text-[10px] font-mono uppercase tracking-widest font-extrabold text-cyan-400 block">
-                      AI Interviewer
+                    <span className="text-[10px] font-mono uppercase tracking-widest font-extrabold text-primary block">
+                      AI Interviewer (Speaking)
                     </span>
-                    <p className="text-sm sm:text-base font-medium text-cyan-50 leading-snug drop-shadow-md line-clamp-3">
+                    <p className="text-sm sm:text-base font-medium text-mainText leading-snug line-clamp-3">
                       &ldquo;{aiCurrentSubtitle}&rdquo;
                       {isAiSpeaking && (
-                        <span className="inline-block w-1.5 h-3.5 ml-1 bg-cyan-400 rounded-sm animate-pulse align-middle shadow-sm shadow-cyan-400" />
+                        <span className="inline-block w-1.5 h-3.5 ml-1 bg-primary rounded-sm animate-pulse align-middle" />
                       )}
                     </p>
                   </motion.div>
@@ -1277,20 +1605,20 @@ export default function InterviewPage() {
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    className="space-y-0.5 max-h-full overflow-hidden"
+                    className="space-y-0.5 max-h-full overflow-hidden bg-white/95 px-6 py-2.5 rounded-2xl border border-cardBorder shadow-soft-card"
                   >
-                    <span className="text-[10px] font-mono uppercase tracking-widest font-extrabold text-purple-400 block">
-                      {formData.fullName || "Candidate"}
+                    <span className="text-[10px] font-mono uppercase tracking-widest font-extrabold text-emerald-700 block">
+                      {formData.fullName || "Candidate"} (Live Speech)
                     </span>
-                    <p className="text-sm sm:text-base font-medium text-purple-100 leading-snug drop-shadow-md line-clamp-3">
+                    <p className="text-sm sm:text-base font-medium text-mainText leading-snug line-clamp-3">
                       &ldquo;
                       <span>{candidateLiveSubtitle}</span>
                       {candidateInterimSubtitle && (
-                        <span className="text-purple-300 italic opacity-85"> {candidateInterimSubtitle}</span>
+                        <span className="text-mutedText italic"> {candidateInterimSubtitle}</span>
                       )}
                       &rdquo;
                       {isCandidateSpeaking && (
-                        <span className="inline-block w-1.5 h-3.5 ml-1 bg-purple-400 rounded-sm animate-pulse align-middle shadow-sm shadow-purple-400" />
+                        <span className="inline-block w-1.5 h-3.5 ml-1 bg-emerald-600 rounded-sm animate-pulse align-middle" />
                       )}
                     </p>
                   </motion.div>
@@ -1300,47 +1628,86 @@ export default function InterviewPage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="flex items-center justify-center gap-2 text-xs font-mono text-amber-300/90"
+                    className="flex items-center justify-center gap-2 text-xs font-mono text-amber-700 bg-amber-50 px-4 py-2 rounded-xl border border-amber-200"
                   >
-                    <Loader2 className="w-3.5 h-3.5 text-amber-400 animate-spin" />
-                    <span>Formulating response...</span>
+                    <Loader2 className="w-3.5 h-3.5 text-amber-600 animate-spin" />
+                    <span>Mistral AI reasoning & formulating follow-up...</span>
                   </motion.div>
                 ) : (
-                  <p className="text-xs text-slate-400 font-mono tracking-wider">
-                    Speak into microphone to answer • Interrupt anytime
+                  <p className="text-xs text-mutedText font-mono tracking-wider bg-white/80 px-4 py-1.5 rounded-full border border-cardBorder shadow-sm">
+                    Speak naturally into microphone • Deepgram listening • Interrupt anytime
                   </p>
                 )}
               </AnimatePresence>
             </div>
           )}
         </main>
-      )}
+      ) : null}
 
       {/* ACTIVE INTERVIEW BOTTOM CONTROLS (Only during Live Interview) */}
       {isInterviewActive && (
-        <footer className="w-full max-w-md flex items-center justify-center gap-3 z-30 pb-3 sm:pb-4 shrink-0">
-          <div className="flex items-center gap-3 p-2 rounded-2xl bg-[#081426]/90 border border-blue-500/30 backdrop-blur-2xl shadow-2xl">
+        <footer className="w-full max-w-lg flex items-center justify-center gap-3 z-30 pb-3 sm:pb-4 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 p-2 rounded-2xl bg-white border border-cardBorder shadow-soft-card">
+            {/* Pause / Resume Button */}
             <motion.button
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
-              onClick={handleEndInterview}
-              className="bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold text-xs px-5 py-3 rounded-xl flex items-center gap-2 shadow-lg shadow-red-600/30 transition border border-rose-400/30"
+              onClick={togglePauseResume}
+              className={`p-3 rounded-xl border transition shadow-sm flex items-center gap-1.5 text-xs font-bold ${
+                isPaused
+                  ? "bg-primary text-white border-primary"
+                  : "bg-white hover:bg-green-50 text-mainText border-cardBorder"
+              }`}
+              title={isPaused ? "Resume Interview" : "Pause Interview"}
             >
-              <Square className="w-4 h-4 fill-current" />
-              <span>End Interview</span>
+              {isPaused ? (
+                <>
+                  <Play className="w-4 h-4 fill-current text-white" />
+                  <span className="hidden sm:inline">Resume</span>
+                </>
+              ) : (
+                <>
+                  <Pause className="w-4 h-4 text-mutedText" />
+                  <span className="hidden sm:inline">Pause</span>
+                </>
+              )}
             </motion.button>
 
+            {/* Mute / Unmute Button */}
             <motion.button
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
               onClick={toggleMute}
-              className={`p-3 rounded-xl border transition shadow-md ${
+              className={`p-3 rounded-xl border transition shadow-sm flex items-center gap-1.5 text-xs font-bold ${
                 isMuted
-                  ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                  : "bg-white/5 hover:bg-white/10 text-gray-200 border-white/10"
+                  ? "bg-amber-50 text-amber-700 border-amber-300"
+                  : "bg-white hover:bg-green-50 text-mainText border-cardBorder"
               }`}
+              title={isMuted ? "Unmute Microphone" : "Mute Microphone"}
             >
-              {isMuted ? <MicOff className="w-4 h-4 text-amber-400" /> : <Mic className="w-4 h-4 text-cyan-400" />}
+              {isMuted ? (
+                <>
+                  <MicOff className="w-4 h-4 text-amber-600" />
+                  <span className="hidden sm:inline">Muted</span>
+                </>
+              ) : (
+                <>
+                  <Mic className="w-4 h-4 text-primary" />
+                  <span className="hidden sm:inline">Mute</span>
+                </>
+              )}
+            </motion.button>
+
+            {/* End Interview Button */}
+            <motion.button
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={handleEndInterview}
+              className="bg-red-500 hover:bg-red-600 text-white font-bold text-xs px-5 py-3 rounded-xl flex items-center gap-2 shadow-sm transition"
+              title="End Interview and View Feedback"
+            >
+              <Square className="w-4 h-4 fill-current" />
+              <span>End Interview</span>
             </motion.button>
           </div>
         </footer>
@@ -1353,7 +1720,7 @@ export default function InterviewPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto"
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
             onClick={() => !isInitializing && setIsModalOpen(false)}
           >
             <motion.div
@@ -1362,30 +1729,30 @@ export default function InterviewPage() {
               exit={{ scale: 0.92, opacity: 0, y: 16 }}
               transition={{ type: "spring", damping: 25, stiffness: 280 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg bg-gradient-to-b from-[#0d162a]/95 via-[#0b1220]/95 to-[#080d17]/95 border border-cyan-500/40 rounded-3xl p-6 sm:p-7 shadow-2xl relative backdrop-blur-2xl"
+              className="w-full max-w-lg bg-white border border-cardBorder rounded-3xl p-6 sm:p-7 shadow-2xl relative text-mainText"
             >
               {/* Close Button */}
               <button
                 onClick={() => setIsModalOpen(false)}
                 disabled={isInitializing}
-                className="absolute top-5 right-5 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition"
+                className="absolute top-5 right-5 p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-mutedText hover:text-mainText transition"
               >
                 <X className="w-4 h-4" />
               </button>
 
               {/* Modal Header */}
-              <div className="pb-4 border-b border-gray-800">
-                <div className="text-cyan-400 font-mono text-xs uppercase tracking-wider font-bold">
+              <div className="pb-4 border-b border-cardBorder">
+                <div className="text-primary font-mono text-xs uppercase tracking-wider font-bold">
                   Session Initialization
                 </div>
-                <h2 className="text-xl font-black text-white mt-1">Pre-Interview Registration</h2>
+                <h2 className="text-xl font-black text-mainText mt-1">Pre-Interview Registration</h2>
                 <p className="text-xs text-mutedText font-medium">Configure your profile before activating two-way voice intelligence.</p>
               </div>
 
               {/* Form Error Banner */}
               {formErrors.microphone && (
-                <div className="mt-4 p-3 rounded-xl bg-red-500/15 border border-red-500/40 text-xs text-red-200 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                <div className="mt-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
                   <span>{formErrors.microphone}</span>
                 </div>
               )}
@@ -1394,8 +1761,8 @@ export default function InterviewPage() {
               <form onSubmit={handleStartFormSubmit} className="space-y-4 mt-4">
                 {/* Candidate Name */}
                 <div>
-                  <label className="text-xs font-semibold text-gray-300 block mb-1">
-                    Candidate Full Name <span className="text-cyan-400">*</span>
+                  <label className="text-xs font-semibold text-mainText block mb-1">
+                    Candidate Full Name <span className="text-primary">*</span>
                   </label>
                   <input
                     type="text"
@@ -1406,12 +1773,12 @@ export default function InterviewPage() {
                     }}
                     onBlur={() => handleFormFieldBlur("fullName")}
                     placeholder="e.g. Alex Johnson"
-                    className={`w-full bg-black/50 border rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none transition ${
-                      formTouched.fullName && formErrors.fullName ? "border-red-500/70 focus:border-red-500" : "border-gray-800 focus:border-cyan-500"
+                    className={`w-full bg-white border rounded-xl px-3.5 py-2.5 text-xs text-mainText focus:outline-none focus:ring-2 focus:ring-primary/20 transition ${
+                      formTouched.fullName && formErrors.fullName ? "border-red-400 focus:border-red-500" : "border-cardBorder focus:border-primary"
                     }`}
                   />
                   {formTouched.fullName && formErrors.fullName && (
-                    <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1">
+                    <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3 shrink-0" /> {formErrors.fullName}
                     </p>
                   )}
@@ -1419,8 +1786,8 @@ export default function InterviewPage() {
 
                 {/* Target Job Role */}
                 <div>
-                  <label className="text-xs font-semibold text-gray-300 block mb-1">
-                    Target Job Role <span className="text-cyan-400">*</span>
+                  <label className="text-xs font-semibold text-mainText block mb-1">
+                    Target Job Role <span className="text-primary">*</span>
                   </label>
                   <div className="relative">
                     <input
@@ -1432,14 +1799,14 @@ export default function InterviewPage() {
                       }}
                       onBlur={() => handleFormFieldBlur("targetRole")}
                       placeholder="e.g. Full-Stack Developer, AI Engineer, SRE"
-                      className={`w-full bg-black/50 border rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-white focus:outline-none transition ${
-                        formTouched.targetRole && formErrors.targetRole ? "border-red-500/70 focus:border-red-500" : "border-gray-800 focus:border-cyan-500"
+                      className={`w-full bg-white border rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-mainText focus:outline-none focus:ring-2 focus:ring-primary/20 transition ${
+                        formTouched.targetRole && formErrors.targetRole ? "border-red-400 focus:border-red-500" : "border-cardBorder focus:border-primary"
                       }`}
                     />
-                    <Briefcase className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                    <Briefcase className="w-4 h-4 text-mutedText absolute left-3 top-2.5" />
                   </div>
                   {formTouched.targetRole && formErrors.targetRole && (
-                    <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1">
+                    <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3 shrink-0" /> {formErrors.targetRole}
                     </p>
                   )}
@@ -1449,7 +1816,7 @@ export default function InterviewPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   {/* Interview Type */}
                   <div>
-                    <label className="text-xs font-semibold text-gray-300 block mb-1">Interview Type</label>
+                    <label className="text-xs font-semibold text-mainText block mb-1">Interview Type</label>
                     <select
                       value={formData.interviewType}
                       onChange={(e: any) => {
@@ -1457,17 +1824,17 @@ export default function InterviewPage() {
                         if (formTouched.interviewType) validateField("interviewType", e.target.value);
                       }}
                       onBlur={() => handleFormFieldBlur("interviewType")}
-                      className={`w-full bg-black/50 border rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none transition font-sans ${
-                        formTouched.interviewType && formErrors.interviewType ? "border-red-500/70 focus:border-red-500" : "border-gray-800 focus:border-cyan-500"
+                      className={`w-full bg-white border rounded-xl px-3 py-2.5 text-xs text-mainText focus:outline-none focus:ring-2 focus:ring-primary/20 transition font-sans ${
+                        formTouched.interviewType && formErrors.interviewType ? "border-red-400 focus:border-red-500" : "border-cardBorder focus:border-primary"
                       }`}
                     >
-                      <option value="Technical" className="bg-[#0b1220]">Technical & Engineering</option>
-                      <option value="HR / Behavioral" className="bg-[#0b1220]">HR & Behavioral</option>
-                      <option value="System Design" className="bg-[#0b1220]">System Architecture</option>
-                      <option value="General" className="bg-[#0b1220]">General Comprehensive</option>
+                      <option value="Technical">1. Technical Interview</option>
+                      <option value="HR">2. HR Interview</option>
+                      <option value="Behavioral">3. Behavioral Interview</option>
+                      <option value="Mixed">4. Mixed Interview (Technical + HR + Behavioral)</option>
                     </select>
                     {formTouched.interviewType && formErrors.interviewType && (
-                      <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1">
+                      <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
                         <AlertCircle className="w-3 h-3 shrink-0" /> {formErrors.interviewType}
                       </p>
                     )}
@@ -1475,7 +1842,7 @@ export default function InterviewPage() {
 
                   {/* Experience Level */}
                   <div>
-                    <label className="text-xs font-semibold text-gray-300 block mb-1">Experience Level</label>
+                    <label className="text-xs font-semibold text-mainText block mb-1">Experience Level</label>
                     <select
                       value={formData.experienceLevel}
                       onChange={(e: any) => {
@@ -1483,17 +1850,16 @@ export default function InterviewPage() {
                         if (formTouched.experienceLevel) validateField("experienceLevel", e.target.value);
                       }}
                       onBlur={() => handleFormFieldBlur("experienceLevel")}
-                      className={`w-full bg-black/50 border rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none transition font-sans ${
-                        formTouched.experienceLevel && formErrors.experienceLevel ? "border-red-500/70 focus:border-red-500" : "border-gray-800 focus:border-cyan-500"
+                      className={`w-full bg-white border rounded-xl px-3 py-2.5 text-xs text-mainText focus:outline-none focus:ring-2 focus:ring-primary/20 transition font-sans ${
+                        formTouched.experienceLevel && formErrors.experienceLevel ? "border-red-400 focus:border-red-500" : "border-cardBorder focus:border-primary"
                       }`}
                     >
-                      <option value="Fresher" className="bg-[#0b1220]">Fresher (New Grad)</option>
-                      <option value="0–1 Year" className="bg-[#0b1220]">0–1 Year (Junior)</option>
-                      <option value="1–3 Years" className="bg-[#0b1220]">1–3 Years (Mid-level)</option>
-                      <option value="3+ Years" className="bg-[#0b1220]">3+ Years (Senior / Lead)</option>
+                      <option value="Fresher">Fresher</option>
+                      <option value="Intermediate">Intermediate</option>
+                      <option value="Experienced">Experienced</option>
                     </select>
                     {formTouched.experienceLevel && formErrors.experienceLevel && (
-                      <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1">
+                      <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
                         <AlertCircle className="w-3 h-3 shrink-0" /> {formErrors.experienceLevel}
                       </p>
                     )}
@@ -1504,7 +1870,7 @@ export default function InterviewPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   {/* Language */}
                   <div>
-                    <label className="text-xs font-semibold text-gray-300 block mb-1">Preferred Language</label>
+                    <label className="text-xs font-semibold text-mainText block mb-1">Interview Language</label>
                     <select
                       value={formData.language}
                       onChange={(e: any) => {
@@ -1512,16 +1878,15 @@ export default function InterviewPage() {
                         if (formTouched.language) validateField("language", e.target.value);
                       }}
                       onBlur={() => handleFormFieldBlur("language")}
-                      className={`w-full bg-black/50 border rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none transition font-sans ${
-                        formTouched.language && formErrors.language ? "border-red-500/70 focus:border-red-500" : "border-gray-800 focus:border-cyan-500"
+                      className={`w-full bg-white border rounded-xl px-3 py-2.5 text-xs text-mainText focus:outline-none focus:ring-2 focus:ring-primary/20 transition font-sans ${
+                        formTouched.language && formErrors.language ? "border-red-400 focus:border-red-500" : "border-cardBorder focus:border-primary"
                       }`}
                     >
-                      <option value="English" className="bg-[#0b1220]">English</option>
-                      <option value="Hindi" className="bg-[#0b1220]">Hindi</option>
-                      <option value="Hinglish" className="bg-[#0b1220]">Hinglish (Conversational)</option>
+                      <option value="English">English</option>
+                      <option value="Hindi">Hindi</option>
                     </select>
                     {formTouched.language && formErrors.language && (
-                      <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1">
+                      <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
                         <AlertCircle className="w-3 h-3 shrink-0" /> {formErrors.language}
                       </p>
                     )}
@@ -1529,39 +1894,53 @@ export default function InterviewPage() {
 
                   {/* Duration */}
                   <div>
-                    <label className="text-xs font-semibold text-gray-300 block mb-1">Interview Duration</label>
+                    <label className="text-xs font-semibold text-mainText block mb-1">Interview Duration</label>
                     <select
                       value={formData.durationMinutes}
                       onChange={(e: any) => {
-                        const val = Number(e.target.value);
+                        const val = Number(e.target.value) as 10 | 15 | 20 | 30;
                         setFormData({ ...formData, durationMinutes: val });
                         if (formTouched.durationMinutes) validateField("durationMinutes", val);
                       }}
                       onBlur={() => handleFormFieldBlur("durationMinutes")}
-                      className={`w-full bg-black/50 border rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none transition font-sans ${
-                        formTouched.durationMinutes && formErrors.durationMinutes ? "border-red-500/70 focus:border-red-500" : "border-gray-800 focus:border-cyan-500"
+                      className={`w-full bg-white border rounded-xl px-3 py-2.5 text-xs text-mainText focus:outline-none focus:ring-2 focus:ring-primary/20 transition font-sans ${
+                        formTouched.durationMinutes && formErrors.durationMinutes ? "border-red-400 focus:border-red-500" : "border-cardBorder focus:border-primary"
                       }`}
                     >
-                      <option value={10} className="bg-[#0b1220]">10 Minutes (Quick Screen)</option>
-                      <option value={15} className="bg-[#0b1220]">15 Minutes (Standard)</option>
-                      <option value={20} className="bg-[#0b1220]">20 Minutes (Deep Dive)</option>
-                      <option value={30} className="bg-[#0b1220]">30 Minutes (Full Round)</option>
+                      <option value={10}>10 Minutes</option>
+                      <option value={15}>15 Minutes</option>
+                      <option value={20}>20 Minutes</option>
+                      <option value={30}>30 Minutes</option>
                     </select>
                     {formTouched.durationMinutes && formErrors.durationMinutes && (
-                      <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1">
+                      <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
                         <AlertCircle className="w-3 h-3 shrink-0" /> {formErrors.durationMinutes}
                       </p>
                     )}
                   </div>
                 </div>
 
+                {/* Optional Job Description */}
+                <div>
+                  <label className="text-xs font-semibold text-mainText block mb-1">
+                    Job Description <span className="text-mutedText font-normal">(Optional)</span>
+                  </label>
+                  <textarea
+                    value={formData.jobDescription || ""}
+                    onChange={(e) => setFormData({ ...formData, jobDescription: e.target.value })}
+                    rows={2}
+                    placeholder="Paste job description or key tech requirements to tailor questions..."
+                    className="w-full bg-white border border-cardBorder rounded-xl p-3 text-xs text-mainText focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none font-sans"
+                  />
+                </div>
+
                 {/* Modal Footer Controls */}
-                <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-800/80">
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-cardBorder">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
                     disabled={isInitializing}
-                    className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-gray-300 transition"
+                    className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-mainText transition"
                   >
                     Cancel
                   </button>
@@ -1569,7 +1948,7 @@ export default function InterviewPage() {
                   <button
                     type="submit"
                     disabled={isInitializing}
-                    className="relative group bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-extrabold text-xs px-6 py-2.5 rounded-xl flex items-center gap-2 shadow-lg shadow-cyan-500/25 transition border border-cyan-300/30 disabled:opacity-50"
+                    className="btn-primary text-xs px-6 py-2.5 rounded-xl flex items-center gap-2 disabled:opacity-50"
                   >
                     {isInitializing ? (
                       <>
@@ -1597,54 +1976,63 @@ export default function InterviewPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-xl bg-gradient-to-b from-[#0e172a] to-[#090e1a] border border-cyan-500/40 rounded-3xl p-7 shadow-2xl space-y-6"
+              className="w-full max-w-xl bg-white border border-cardBorder rounded-3xl p-7 shadow-2xl space-y-6 text-mainText"
             >
-              <div className="flex justify-between items-start pb-4 border-b border-gray-800">
+              <div className="flex justify-between items-start pb-4 border-b border-cardBorder">
                 <div>
-                  <div className="text-cyan-400 font-mono text-xs uppercase tracking-wider font-bold">
-                    Evaluation Debrief
+                  <div className="flex items-center gap-2">
+                    <span className="text-primary font-mono text-xs uppercase tracking-wider font-bold">
+                      Evaluation Debrief
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-green-50 text-primary border border-green-200">
+                      Evaluated by Mistral AI
+                    </span>
                   </div>
-                  <h2 className="text-xl font-black text-white mt-1">Interview Assessment Report</h2>
+                  <h2 className="text-xl font-black text-mainText mt-1">Interview Assessment Report</h2>
                   <p className="text-xs text-mutedText font-medium">Candidate: {formData.fullName} • {formData.targetRole} ({formData.interviewType})</p>
                 </div>
                 <button
                   onClick={() => setEvaluationData(null)}
-                  className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white"
+                  className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-mutedText hover:text-mainText"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Scores */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                <div className="p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/30">
-                  <span className="text-[10px] font-mono text-cyan-300 font-bold block uppercase">Overall</span>
-                  <span className="text-2xl font-black text-white">{evaluationData.overall_score}%</span>
+              {/* Scores: 4 Core Evaluation Pillars */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-center">
+                <div className="p-3 rounded-2xl bg-green-50 border border-green-200">
+                  <span className="text-[10px] font-mono text-primary font-bold block uppercase">Overall</span>
+                  <span className="text-2xl font-black text-mainText">{evaluationData.overall_score}%</span>
                 </div>
-                <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/30">
-                  <span className="text-[10px] font-mono text-blue-300 font-bold block uppercase">Technical</span>
-                  <span className="text-2xl font-black text-white">{evaluationData.technical_score}%</span>
+                <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200">
+                  <span className="text-[10px] font-mono text-emerald-700 font-bold block uppercase">Technical</span>
+                  <span className="text-2xl font-black text-mainText">{evaluationData.technical_score}%</span>
                 </div>
-                <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/30">
-                  <span className="text-[10px] font-mono text-purple-300 font-bold block uppercase">Communication</span>
-                  <span className="text-2xl font-black text-white">{evaluationData.communication_score}%</span>
+                <div className="p-3 rounded-2xl bg-green-50 border border-green-200">
+                  <span className="text-[10px] font-mono text-primary font-bold block uppercase">Communication</span>
+                  <span className="text-2xl font-black text-mainText">{evaluationData.communication_score}%</span>
                 </div>
-                <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30">
-                  <span className="text-[10px] font-mono text-emerald-300 font-bold block uppercase">Problem-Solving</span>
-                  <span className="text-2xl font-black text-white">{evaluationData.problem_solving_score}%</span>
+                <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200">
+                  <span className="text-[10px] font-mono text-emerald-700 font-bold block uppercase">Problem-Solving</span>
+                  <span className="text-2xl font-black text-mainText">{evaluationData.problem_solving_score}%</span>
+                </div>
+                <div className="p-3 rounded-2xl bg-green-50 border border-green-200 col-span-2 sm:col-span-1">
+                  <span className="text-[10px] font-mono text-primary font-bold block uppercase">Confidence</span>
+                  <span className="text-2xl font-black text-mainText">{evaluationData.confidence_score || 85}%</span>
                 </div>
               </div>
 
               {/* Strengths & Growth Areas */}
-              <div className="space-y-3 text-xs leading-relaxed">
-                <div className="p-3.5 rounded-xl bg-cyan-950/30 border border-cyan-500/20 text-cyan-200">
-                  <strong className="text-cyan-400 block mb-1">Key Strengths:</strong>
+              <div className="space-y-3 text-xs leading-relaxed max-h-[45vh] overflow-y-auto pr-1">
+                <div className="p-3.5 rounded-xl bg-green-50/70 border border-green-200 text-slate-800">
+                  <strong className="text-primary block mb-1">Key Strengths:</strong>
                   <ul className="list-disc list-inside space-y-1">
                     {evaluationData.strengths?.map((s: string, idx: number) => (
                       <li key={idx}>{s}</li>
@@ -1652,20 +2040,62 @@ export default function InterviewPage() {
                   </ul>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-amber-950/30 border border-amber-500/20 text-amber-200">
-                  <strong className="text-amber-400 block mb-1">Target Improvement Areas:</strong>
+                <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900">
+                  <strong className="text-amber-700 block mb-1">Target Improvement Areas:</strong>
                   <ul className="list-disc list-inside space-y-1">
                     {evaluationData.growth_areas?.map((g: string, idx: number) => (
                       <li key={idx}>{g}</li>
                     ))}
                   </ul>
                 </div>
+
+                {/* Recommended Practice Topics */}
+                {evaluationData.recommended_topics && evaluationData.recommended_topics.length > 0 && (
+                  <div className="p-3.5 rounded-xl bg-blue-50/80 border border-blue-200 text-blue-900">
+                    <strong className="text-blue-800 block mb-1">Recommended Practice Topics:</strong>
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {evaluationData.recommended_topics.map((top: string, idx: number) => (
+                        <span key={idx} className="px-2 py-0.5 rounded-md bg-white border border-blue-200 text-[11px] font-medium text-blue-800">
+                          {top}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Question-Wise Feedback Breakdown if available */}
+                {evaluationData.question_breakdown && evaluationData.question_breakdown.length > 0 && (
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-cardBorder space-y-2">
+                    <strong className="text-mainText block">Question-by-Question Feedback:</strong>
+                    <div className="space-y-2">
+                      {evaluationData.question_breakdown.map((qItem: any, idx: number) => (
+                        <div key={idx} className="p-2.5 rounded-lg bg-white border border-cardBorder text-[11px]">
+                          <div className="flex justify-between items-start mb-0.5">
+                            <span className="font-bold text-mainText">Q{idx + 1}: {qItem.question}</span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-green-50 text-primary border border-green-200 shrink-0 ml-2">
+                              {qItem.score}/10 • {qItem.verdict}
+                            </span>
+                          </div>
+                          <p className="text-mutedText italic mb-1">&ldquo;{qItem.candidate_answer}&rdquo;</p>
+                          <p className="text-slate-700">{qItem.critique}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {evaluationData.feedback_summary && (
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-cardBorder text-mainText">
+                    <strong className="text-mainText block mb-1">Executive Summary:</strong>
+                    <p className="text-xs text-mutedText leading-relaxed">{evaluationData.feedback_summary}</p>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end pt-2">
                 <button
                   onClick={() => setEvaluationData(null)}
-                  className="px-6 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 font-bold text-xs text-white transition shadow-lg shadow-cyan-600/30"
+                  className="btn-primary text-xs px-6 py-2.5 rounded-xl"
                 >
                   Close Debrief
                 </button>

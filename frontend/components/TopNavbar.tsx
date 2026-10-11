@@ -4,19 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { 
-  Sparkles, 
   Flame, 
-  Search, 
-  Bell, 
   Bot, 
-  ExternalLink,
-  ShieldCheck,
-  Zap
+  ChevronRight
 } from "lucide-react";
 
 export default function TopNavbar() {
   const pathname = usePathname();
-  const { user, profile, streak } = useAuth();
+  const { profile, streak } = useAuth();
   const currentDays = streak?.current_streak ?? 0;
   const streakLabel = `${currentDays}-Day Streak`;
 
@@ -36,16 +31,16 @@ export default function TopNavbar() {
   const pageInfo = getPageTitle(pathname);
 
   return (
-    <header className="h-16 border-b border-[#1C253B] bg-[#0A0E1A]/80 backdrop-blur-md sticky top-0 z-20 px-8 flex items-center justify-between">
+    <header className="h-16 border-b border-[#D1FAE5] bg-white/90 backdrop-blur-md sticky top-0 z-20 px-8 flex items-center justify-between shadow-xs">
       {/* Left: Breadcrumbs & Page title */}
       <div className="flex items-center gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-blue-400 uppercase tracking-wider">
+            <span className="text-xs font-semibold text-[#16A34A] uppercase tracking-wider">
               {pageInfo.category}
             </span>
-            <span className="text-slate-600">/</span>
-            <span className="text-xs text-slate-400 font-medium">{pageInfo.title}</span>
+            <ChevronRight className="w-3.5 h-3.5 text-[#9CA3AF]" />
+            <span className="text-xs text-[#1F2937] font-semibold">{pageInfo.title}</span>
           </div>
         </div>
       </div>
@@ -55,9 +50,9 @@ export default function TopNavbar() {
         {/* Practice Streak Badge */}
         <div 
           title={streak?.longest_streak ? `Best: ${streak.longest_streak} days` : "Complete an activity today to build your streak"}
-          className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold transition-all shadow-sm shadow-amber-500/5 hover:border-amber-500/40"
+          className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#FFFBEB] border border-[#FDE68A] text-[#D97706] text-xs font-bold transition-all shadow-xs hover:border-[#F59E0B]"
         >
-          <Flame className={`w-4 h-4 fill-amber-400 text-amber-400 ${currentDays > 0 ? "animate-pulse scale-110 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)]" : "opacity-60"}`} />
+          <Flame className={`w-4 h-4 fill-[#F59E0B] text-[#F59E0B] ${currentDays > 0 ? "animate-pulse scale-110 drop-shadow-[0_0_6px_rgba(245,158,11,0.4)]" : "opacity-60"}`} />
           <span>{streakLabel}</span>
         </div>
 
@@ -65,9 +60,9 @@ export default function TopNavbar() {
         {pathname !== "/interview" && (
           <Link
             href="/interview"
-            className="hidden sm:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold shadow-md shadow-blue-500/20 border border-blue-400/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#22C55E] hover:bg-[#16A34A] text-white text-xs font-semibold shadow-md shadow-green-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
-            <Bot className="w-3.5 h-3.5" />
+            <Bot className="w-3.5 h-3.5 text-white" />
             <span>Launch Mock Interview</span>
           </Link>
         )}

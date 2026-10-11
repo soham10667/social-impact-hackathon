@@ -12,8 +12,7 @@ import {
   AlertTriangle, 
   Sparkles, 
   Play, 
-  ArrowRight,
-  BookOpen
+  ArrowRight
 } from "lucide-react";
 import { 
   ReactFlow, 
@@ -31,28 +30,28 @@ import "@xyflow/react/dist/style.css";
 // Custom Skill Graph Node Component
 const CustomSkillNode = ({ data }: { data: any }) => {
   const statusStyles: any = {
-    mastered: "bg-green-500/10 border-green-500/50 text-green-400 shadow-green-500/10",
-    in_progress: "bg-blue-500/10 border-blue-500/50 text-blue-400 shadow-blue-500/10",
-    needs_improvement: "bg-amber-500/10 border-amber-500/50 text-amber-400 shadow-amber-500/10",
-    not_started: "bg-gray-800/40 border-gray-700 text-gray-400"
+    mastered: "bg-[#F0FDF4] border-[#86EFAC] text-[#166534] shadow-xs",
+    in_progress: "bg-white border-[#86EFAC] text-[#15803D] shadow-xs",
+    needs_improvement: "bg-[#FFFBEB] border-[#FDE68A] text-[#B45309] shadow-xs",
+    not_started: "bg-white border-[#E5E7EB] text-[#6B7280]"
   };
 
   return (
-    <div className={`p-4 rounded-2xl border-2 shadow-xl backdrop-blur-md min-w-[200px] transition-all hover:scale-105 ${statusStyles[data.status]}`}>
-      <Handle type="target" position={Position.Top} className="!bg-blue-500 !w-3 !h-3" />
+    <div className={`p-4 rounded-2xl border-2 shadow-soft-card min-w-[200px] transition-all hover:scale-105 ${statusStyles[data.status]}`}>
+      <Handle type="target" position={Position.Top} className="!bg-[#22C55E] !w-3 !h-3" />
       <div className="flex items-center justify-between gap-3 mb-1">
-        <span className="font-bold text-white text-sm">{data.label}</span>
-        <span className="text-xs font-mono font-extrabold px-2 py-0.5 rounded bg-black/40 border border-current">
+        <span className="font-bold text-[#1F2937] text-sm">{data.label}</span>
+        <span className="text-xs font-mono font-extrabold px-2 py-0.5 rounded bg-white border border-[#D1FAE5] text-[#16A34A]">
           {data.score}%
         </span>
       </div>
       <div className="text-[11px] font-semibold capitalize tracking-wider flex items-center gap-1.5 mt-2">
-        {data.status === 'mastered' && <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />}
-        {data.status === 'in_progress' && <Clock className="w-3.5 h-3.5 text-blue-400" />}
-        {data.status === 'needs_improvement' && <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />}
+        {data.status === 'mastered' && <CheckCircle2 className="w-3.5 h-3.5 text-[#16A34A]" />}
+        {data.status === 'in_progress' && <Clock className="w-3.5 h-3.5 text-[#22C55E]" />}
+        {data.status === 'needs_improvement' && <AlertTriangle className="w-3.5 h-3.5 text-[#D97706]" />}
         <span>{data.status.replace("_", " ")}</span>
       </div>
-      <Handle type="source" position={Position.Bottom} className="!bg-blue-500 !w-3 !h-3" />
+      <Handle type="source" position={Position.Bottom} className="!bg-[#22C55E] !w-3 !h-3" />
     </div>
   );
 };
@@ -114,15 +113,16 @@ export default function RoadmapPage() {
   ];
 
   const initialEdges: Edge[] = [
-    { id: "e-py-dsa", source: "python-basics", target: "dsa-basics", animated: true, style: { stroke: "#3B82F6", strokeWidth: 2 } },
-    { id: "e-py-sql", source: "python-basics", target: "sql-basics", animated: true, style: { stroke: "#3B82F6", strokeWidth: 2 } },
-    { id: "e-dsa-web", source: "dsa-basics", target: "web-frameworks", animated: true, style: { stroke: "#8B5CF6", strokeWidth: 2 } },
-    { id: "e-sql-web", source: "sql-basics", target: "web-frameworks", animated: true, style: { stroke: "#8B5CF6", strokeWidth: 2 } },
-    { id: "e-web-sys", source: "web-frameworks", target: "sys-design", animated: true, style: { stroke: "#64748B", strokeWidth: 2 } }
+    { id: "e-py-dsa", source: "python-basics", target: "dsa-basics", animated: true, style: { stroke: "#22C55E", strokeWidth: 2 } },
+    { id: "e-py-sql", source: "python-basics", target: "sql-basics", animated: true, style: { stroke: "#22C55E", strokeWidth: 2 } },
+    { id: "e-dsa-web", source: "dsa-basics", target: "web-frameworks", animated: true, style: { stroke: "#16A34A", strokeWidth: 2 } },
+    { id: "e-sql-web", source: "sql-basics", target: "web-frameworks", animated: true, style: { stroke: "#16A34A", strokeWidth: 2 } },
+    { id: "e-web-sys", source: "web-frameworks", target: "sys-design", animated: true, style: { stroke: "#86EFAC", strokeWidth: 2 } }
   ];
 
   useEffect(() => {
-    axios.get("http://localhost:8000/api/innovations/graph/demo-candidate")
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    axios.get(`${apiUrl}/api/innovations/graph/demo-candidate`)
       .then((res) => {
         if (res.data.nodes?.length > 0) {
           setNodes(initialNodes);
@@ -152,26 +152,26 @@ export default function RoadmapPage() {
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn">
+    <div className="space-y-8 animate-fadeIn text-[#1F2937]">
       {/* Header Banner & Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#D1FAE5]">
         <div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
-            <Map className="w-8 h-8 text-blue-400" /> Learning Roadmap & Skill Graph
+          <h1 className="text-3xl font-extrabold text-[#1F2937] tracking-tight flex items-center gap-2.5">
+            <Map className="w-8 h-8 text-[#16A34A]" /> Learning Roadmap & Skill Graph
           </h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-[#6B7280] text-sm mt-1">
             Personalized adaptive schedule combined with visual prerequisite knowledge trees.
           </p>
         </div>
 
         {/* Tab Controls */}
-        <div className="flex bg-[#0D1220] p-1.5 rounded-2xl border border-slate-800 shrink-0">
+        <div className="flex bg-[#F0FDF4] p-1.5 rounded-2xl border border-[#D1FAE5] shrink-0">
           <button
             onClick={() => handleTabChange("roadmap")}
             className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-semibold transition-all ${
               activeTab === "roadmap"
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25"
-                : "text-slate-400 hover:text-white"
+                ? "bg-[#22C55E] text-white shadow-md shadow-green-500/25"
+                : "text-[#4B5563] hover:text-[#1F2937]"
             }`}
           >
             <Map className="w-4 h-4" /> Personalized Roadmap
@@ -180,8 +180,8 @@ export default function RoadmapPage() {
             onClick={() => handleTabChange("graph")}
             className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-semibold transition-all ${
               activeTab === "graph"
-                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/25"
-                : "text-slate-400 hover:text-white"
+                ? "bg-[#22C55E] text-white shadow-md shadow-green-500/25"
+                : "text-[#4B5563] hover:text-[#1F2937]"
             }`}
           >
             <GitFork className="w-4 h-4" /> Skill Knowledge Graph
@@ -192,15 +192,15 @@ export default function RoadmapPage() {
       {/* TAB 1: PERSONALIZED ROADMAP */}
       {activeTab === "roadmap" && (
         <div className="space-y-6">
-          <div className="bg-[#121829] p-7 rounded-3xl border border-[#1E273E] space-y-5 shadow-2xl">
+          <div className="bg-white p-7 rounded-3xl border border-[#D1FAE5] space-y-5 shadow-soft-card">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-blue-400" /> 15-Day Adaptive Target Schedule
+                <h2 className="text-xl font-bold text-[#1F2937] flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-[#22C55E]" /> 15-Day Adaptive Target Schedule
                 </h2>
-                <p className="text-xs text-slate-400 mt-1">Calculated dynamically based on assessment scores, weakness areas, and mistake frequency.</p>
+                <p className="text-xs text-[#6B7280] mt-1">Calculated dynamically based on assessment scores, weakness areas, and mistake frequency.</p>
               </div>
-              <span className="text-xs font-bold px-3.5 py-1.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/30 shrink-0">
+              <span className="text-xs font-bold px-3.5 py-1.5 rounded-full bg-[#DCFCE7] text-[#166534] border border-[#86EFAC] shrink-0">
                 60% Completed
               </span>
             </div>
@@ -211,40 +211,40 @@ export default function RoadmapPage() {
                   key={d.day} 
                   className={`p-4 rounded-2xl border flex items-center justify-between transition-all duration-200 ${
                     d.completed 
-                      ? "bg-emerald-950/15 border-emerald-500/30 hover:border-emerald-500/50" 
-                      : "bg-[#0E1322] border-slate-800 hover:border-slate-700"
+                      ? "bg-[#F0FDF4] border-[#86EFAC]" 
+                      : "bg-white border-[#D1FAE5] hover:border-[#86EFAC]"
                   }`}
                 >
                   <div className="flex items-center gap-4 min-w-0">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
-                      d.completed ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-slate-800 text-slate-400"
+                      d.completed ? "bg-[#DCFCE7] text-[#166534] border border-[#86EFAC]" : "bg-[#F3F4F6] text-[#6B7280]"
                     }`}>
                       D{d.day}
                     </div>
                     <div className="min-w-0">
-                      <h3 className="font-semibold text-white text-sm truncate">{d.title}</h3>
-                      <span className="text-[11px] text-slate-400 font-medium">{d.type}</span>
+                      <h3 className="font-semibold text-[#1F2937] text-sm truncate">{d.title}</h3>
+                      <span className="text-[11px] text-[#6B7280] font-medium">{d.type}</span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2.5 shrink-0">
                     {d.completed ? (
-                      <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-bold bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Finished
+                      <span className="flex items-center gap-1.5 text-xs text-[#166534] font-bold bg-[#DCFCE7] px-3 py-1 rounded-lg border border-[#86EFAC]">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#16A34A]" /> Finished
                       </span>
                     ) : (
                       <>
                         <button
                           onClick={() => handleCompleteTask(d.day)}
                           title="Mark task completed and build streak"
-                          className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5 transition"
+                          className="bg-[#DCFCE7] hover:bg-[#BBF7D0] text-[#166534] border border-[#86EFAC] text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5 transition"
                         >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#16A34A]" />
                           <span>Mark Done</span>
                         </button>
                         <button
                           onClick={() => router.push(d.path)}
-                          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition shadow-md shadow-blue-500/20"
+                          className="bg-[#22C55E] hover:bg-[#16A34A] text-white text-xs font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition shadow-sm shadow-green-500/20"
                         >
                           <span>Start</span>
                           <ArrowRight className="w-3 h-3" />
@@ -263,16 +263,16 @@ export default function RoadmapPage() {
       {activeTab === "graph" && (
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs font-semibold px-2 gap-2">
-            <span className="text-slate-400">Prerequisite competency tree visualized in interactive React Flow:</span>
+            <span className="text-[#6B7280]">Prerequisite competency tree visualized in interactive React Flow:</span>
             <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1.5 text-emerald-400"><span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> Mastered</span>
-              <span className="flex items-center gap-1.5 text-blue-400"><span className="w-2 h-2 rounded-full bg-blue-400" /> In Progress</span>
-              <span className="flex items-center gap-1.5 text-amber-400"><span className="w-2 h-2 rounded-full bg-amber-400" /> Needs Work</span>
+              <span className="flex items-center gap-1.5 text-[#166534]"><span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" /> Mastered</span>
+              <span className="flex items-center gap-1.5 text-[#15803D]"><span className="w-2 h-2 rounded-full bg-[#4ADE80]" /> In Progress</span>
+              <span className="flex items-center gap-1.5 text-[#D97706]"><span className="w-2 h-2 rounded-full bg-[#F59E0B]" /> Needs Work</span>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-8 bg-[#121829] rounded-3xl border border-[#1E273E] h-[580px] relative overflow-hidden shadow-2xl">
+            <div className="lg:col-span-8 bg-white rounded-3xl border border-[#D1FAE5] h-[580px] relative overflow-hidden shadow-soft-card">
               <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -282,49 +282,50 @@ export default function RoadmapPage() {
                 nodeTypes={nodeTypes}
                 fitView
               >
-                <Background color="#1E273E" gap={24} />
-                <Controls className="!bg-[#141B2D] !border-slate-800 !rounded-xl !shadow-xl flex flex-col overflow-hidden text-white border [&>button]:!bg-[#141B2D] [&>button]:!border-slate-800 [&>button]:!text-white [&>button:hover]:!bg-blue-600 [&_svg]:!fill-white" />
+                <Background color="#D1FAE5" gap={24} />
+                <Controls className="!bg-white !border-[#D1FAE5] !rounded-xl !shadow-md flex flex-col overflow-hidden text-[#1F2937] border [&>button]:!bg-white [&>button]:!border-[#D1FAE5] [&>button]:!text-[#1F2937] [&>button:hover]:!bg-[#DCFCE7] [&_svg]:!fill-[#166534]" />
               </ReactFlow>
             </div>
 
-            <div className="lg:col-span-4 bg-[#121829] p-7 rounded-3xl border border-[#1E273E] flex flex-col justify-between h-[580px] shadow-2xl">
+            <div className="lg:col-span-4 bg-white p-7 rounded-3xl border border-[#D1FAE5] flex flex-col justify-between h-[580px] shadow-soft-card">
               {selectedSkill ? (
                 <div className="space-y-6">
                   <div>
-                    <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">{selectedSkill.category}</span>
-                    <h3 className="text-2xl font-extrabold text-white mt-1">{selectedSkill.label}</h3>
+                    <span className="text-xs font-bold text-[#16A34A] uppercase tracking-wider">{selectedSkill.category}</span>
+                    <h3 className="text-2xl font-extrabold text-[#1F2937] mt-1">{selectedSkill.label}</h3>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-[#0E1322] border border-slate-800 space-y-2.5">
+                  <div className="p-4 rounded-2xl bg-[#FAFDFA] border border-[#D1FAE5] space-y-2.5">
                     <div className="flex justify-between text-xs">
-                      <span className="text-slate-400">Mastery Level:</span>
-                      <span className="text-white font-bold capitalize">{selectedSkill.status?.replace("_", " ")}</span>
+                      <span className="text-[#6B7280]">Mastery Level:</span>
+                      <span className="text-[#1F2937] font-bold capitalize">{selectedSkill.status?.replace("_", " ")}</span>
                     </div>
-                    <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
-                      <div className="bg-gradient-to-r from-blue-500 to-indigo-500 h-full rounded-full transition-all duration-500" style={{ width: `${selectedSkill.score}%` }} />
+                    {/* Progress Bar with #DCFCE7 background and #22C55E progress */}
+                    <div className="w-full bg-[#DCFCE7] h-2.5 rounded-full overflow-hidden border border-[#D1FAE5]">
+                      <div className="bg-[#22C55E] h-full rounded-full transition-all duration-500" style={{ width: `${selectedSkill.score}%` }} />
                     </div>
-                    <div className="text-right text-xs font-mono text-blue-400 font-bold">{selectedSkill.score}% Verified Score</div>
+                    <div className="text-right text-xs font-mono text-[#16A34A] font-bold">{selectedSkill.score}% Verified Score</div>
                   </div>
 
                   <div className="space-y-2">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Competency Scope</h4>
-                    <p className="text-xs text-slate-300 leading-relaxed">{selectedSkill.description}</p>
+                    <h4 className="text-xs font-bold text-[#6B7280] uppercase tracking-wider">Competency Scope</h4>
+                    <p className="text-xs text-[#4B5563] leading-relaxed">{selectedSkill.description}</p>
                   </div>
 
-                  <div className="p-3.5 bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300 rounded-xl leading-relaxed">
-                    <Sparkles className="w-4 h-4 text-blue-400 inline mr-1.5" />
+                  <div className="p-3.5 bg-[#F0FDF4] border border-[#86EFAC] text-xs text-[#166534] rounded-xl leading-relaxed">
+                    <Sparkles className="w-4 h-4 text-[#16A34A] inline mr-1.5" />
                     Evidence verified from live OneCompiler sandbox tests & AI mock interviews.
                   </div>
                 </div>
               ) : (
-                <div className="text-slate-400 text-sm flex items-center justify-center h-full">
+                <div className="text-[#6B7280] text-sm flex items-center justify-center h-full">
                   Click any skill node in the graph to view competency evidence.
                 </div>
               )}
 
               <button 
                 onClick={() => router.push("/assessments")}
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs py-3.5 rounded-xl transition shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
+                className="w-full bg-[#22C55E] hover:bg-[#16A34A] text-white font-semibold text-xs py-3.5 rounded-xl transition shadow-button-primary flex items-center justify-center gap-2"
               >
                 <Play className="w-3.5 h-3.5 fill-current" />
                 <span>Start Assessment for this Skill</span>
@@ -336,4 +337,3 @@ export default function RoadmapPage() {
     </div>
   );
 }
-

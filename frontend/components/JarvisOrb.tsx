@@ -39,26 +39,26 @@ export default function JarvisOrb({
 
       ctx.clearRect(0, 0, width, height);
 
-      // Color palette calibration based on active state
-      let coreColor = "#00D9FF";
-      let electricBlue = "#1677FF";
-      let primaryBlue = "#2563EB";
-      let glowRgb = "0, 217, 255";
+      // Color palette calibration based on active state (Fresh Green & Emerald theme)
+      let coreColor = "#22C55E";
+      let electricBlue = "#16A34A";
+      let primaryBlue = "#15803D";
+      let glowRgb = "34, 197, 94";
       let baseRadius = 88;
       let waveAmp = 12;
       let rotSpeed = 1;
 
       if (isAiSpeaking) {
-        coreColor = "#38BDF8";
-        electricBlue = "#0284C7";
-        glowRgb = "56, 189, 248";
+        coreColor = "#4ADE80";
+        electricBlue = "#22C55E";
+        glowRgb = "74, 222, 128";
         baseRadius = 96 + Math.sin(time * 6) * 6;
         waveAmp = 26 + Math.sin(time * 8) * 8;
         rotSpeed = 2.4;
       } else if (isCandidateSpeaking) {
-        coreColor = "#A855F7";
-        electricBlue = "#6366F1";
-        glowRgb = "168, 85, 247";
+        coreColor = "#10B981";
+        electricBlue = "#059669";
+        glowRgb = "16, 185, 129";
         const volScale = Math.min(1, Math.max(0, audioVolume)) * 40;
         baseRadius = 92 + volScale;
         waveAmp = 20 + volScale * 1.6;
@@ -71,10 +71,10 @@ export default function JarvisOrb({
         waveAmp = 9;
         rotSpeed = 1.2;
       } else {
-        // Futuristic idle state: deep electric blue + neon cyan
-        coreColor = "#00D9FF";
-        electricBlue = "#1677FF";
-        glowRgb = "0, 217, 255";
+        // Fresh idle state: vibrant fresh green (#22C55E)
+        coreColor = "#22C55E";
+        electricBlue = "#16A34A";
+        glowRgb = "34, 197, 94";
         baseRadius = 84 + Math.sin(time * 1.8) * 3.5;
         waveAmp = 8;
         rotSpeed = 0.75;
@@ -84,8 +84,8 @@ export default function JarvisOrb({
       const ambientGlow = ctx.createRadialGradient(cx, cy, 20, cx, cy, baseRadius * 2.5);
       ambientGlow.addColorStop(0, `rgba(${glowRgb}, 0.28)`);
       ambientGlow.addColorStop(0.35, `rgba(${glowRgb}, 0.12)`);
-      ambientGlow.addColorStop(0.7, `rgba(22, 119, 255, 0.05)`);
-      ambientGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ambientGlow.addColorStop(0.7, `rgba(34, 197, 94, 0.05)`);
+      ambientGlow.addColorStop(1, "rgba(255, 255, 255, 0)");
 
       ctx.save();
       ctx.fillStyle = ambientGlow;
@@ -173,7 +173,7 @@ export default function JarvisOrb({
       }
       ctx.restore();
 
-      // 5. Glowing Spherical Core Body (Cyan to Deep Blue Gradient)
+      // 5. Glowing Spherical Core Body (Emerald & Fresh Green Gradient)
       const coreGrad = ctx.createRadialGradient(
         cx - baseRadius * 0.25,
         cy - baseRadius * 0.25,
@@ -182,11 +182,11 @@ export default function JarvisOrb({
         cy,
         baseRadius
       );
-      coreGrad.addColorStop(0, "#E0F2FE"); // High-intensity center highlight
+      coreGrad.addColorStop(0, "#F0FDF4"); // High-intensity fresh white-green center highlight
       coreGrad.addColorStop(0.2, coreColor);
       coreGrad.addColorStop(0.65, electricBlue);
       coreGrad.addColorStop(0.95, primaryBlue);
-      coreGrad.addColorStop(1, "#030B1C");
+      coreGrad.addColorStop(1, "#064E3B");
 
       ctx.save();
       ctx.fillStyle = coreGrad;
@@ -274,23 +274,23 @@ export default function JarvisOrb({
       <div
         className={`absolute w-72 h-72 sm:w-80 sm:h-80 md:w-96 md:h-96 rounded-full blur-3xl transition-all duration-700 pointer-events-none -z-10 ${
           isAiSpeaking
-            ? "bg-cyan-500/30 scale-125"
+            ? "bg-emerald-400/25 scale-125"
             : isCandidateSpeaking
-            ? "bg-purple-500/30 scale-125"
+            ? "bg-green-500/25 scale-125"
             : isAiThinking
-            ? "bg-amber-500/25 scale-110"
-            : "bg-blue-600/25 scale-100"
+            ? "bg-amber-400/25 scale-110"
+            : "bg-green-500/20 scale-100"
         }`}
       />
 
-      {/* Futuristic concentric floor ring reflection beneath orb */}
-      <div className="absolute -bottom-10 sm:-bottom-12 w-64 sm:w-80 h-16 sm:h-20 rounded-[100%] bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent blur-md pointer-events-none -z-10" />
+      {/* Fresh concentric floor ring reflection beneath orb */}
+      <div className="absolute -bottom-10 sm:-bottom-12 w-64 sm:w-80 h-16 sm:h-20 rounded-[100%] bg-gradient-to-r from-transparent via-green-500/15 to-transparent blur-md pointer-events-none -z-10" />
 
       <canvas
         ref={canvasRef}
         width={size}
         height={size}
-        className="w-[280px] h-[280px] sm:w-[340px] sm:h-[340px] md:w-[400px] md:h-[400px] lg:w-[440px] lg:h-[440px] max-h-[46vh] max-w-[90vw] aspect-square drop-shadow-[0_0_40px_rgba(0,217,255,0.35)]"
+        className="w-[280px] h-[280px] sm:w-[340px] sm:h-[340px] md:w-[400px] md:h-[400px] lg:w-[440px] lg:h-[440px] max-h-[46vh] max-w-[90vw] aspect-square drop-shadow-[0_0_35px_rgba(34,197,94,0.3)]"
       />
     </div>
   );
