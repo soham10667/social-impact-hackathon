@@ -23,8 +23,6 @@ interface NavItem {
   name: string;
   href: string;
   icon: any;
-  badge?: string;
-  badgeColor?: string;
 }
 
 const navSections: { title: string; items: NavItem[] }[] = [
@@ -32,9 +30,9 @@ const navSections: { title: string; items: NavItem[] }[] = [
     title: "PREPARATION ARENAS",
     items: [
       { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-      { name: "AI Mock Interview", href: "/interview", icon: Bot, badge: "Voice AI", badgeColor: "bg-blue-500/15 text-blue-400 border-blue-500/30" },
-      { name: "Coding Arena", href: "/coding", icon: Code, badge: "Sandbox", badgeColor: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" },
-      { name: "Crisis Simulator", href: "/crisis", icon: ShieldAlert, badge: "P0 SRE", badgeColor: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
+      { name: "AI Mock Interview", href: "/interview", icon: Bot },
+      { name: "Coding Arena", href: "/coding", icon: Code },
+      { name: "Crisis Simulator", href: "/crisis", icon: ShieldAlert },
     ],
   },
   {
@@ -127,16 +125,6 @@ export default function Sidebar() {
                     }`} />
                     <span>{item.name}</span>
                   </div>
-
-                  {item.badge && (
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all ${
-                      isActive 
-                        ? "bg-white/20 text-white border-white/30" 
-                        : item.badgeColor || "bg-slate-800 text-slate-300 border-slate-700"
-                    }`}>
-                      {item.badge}
-                    </span>
-                  )}
                 </Link>
               );
             })}
@@ -155,10 +143,6 @@ export default function Sidebar() {
               <p className="text-xs font-semibold text-white truncate group-hover:text-blue-400 transition-colors">
                 {displayName || "Candidate"}
               </p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <p className="text-[11px] text-emerald-400 font-medium truncate">Candidate Active</p>
-              </div>
             </div>
           </Link>
           <button

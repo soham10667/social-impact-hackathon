@@ -254,3 +254,46 @@ CREATE TABLE IF NOT EXISTS assessment_asked_questions (
     UNIQUE(assessment_id, normalized_fingerprint)
 );
 
+-- 11. User Streaks Tracking
+CREATE TABLE IF NOT EXISTS user_streaks (
+    user_id UUID PRIMARY KEY,
+    current_streak INT NOT NULL DEFAULT 0,
+    longest_streak INT NOT NULL DEFAULT 0,
+    last_activity_date DATE,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 12. User Daily Activity Log
+CREATE TABLE IF NOT EXISTS user_daily_activity (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL,
+    activity_date DATE NOT NULL,
+    activity_type VARCHAR(100) NOT NULL, -- 'mock_interview', 'technical_assessment', 'coding_arena', 'learning_roadmap'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_user_daily_activity UNIQUE(user_id, activity_date, activity_type)
+);
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_user_daily_activity_lookup ON user_daily_activity(user_id, activity_date);
+CREATE INDEX IF NOT EXISTS idx_user_streaks_lookup ON user_streaks(user_id);
+
+-- Row Level Security (RLS)
+ALTER TABLE user_streaks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_daily_activity ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own streak"
+    ON user_streaks FOR SELECT
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own streak"
+    ON user_streaks FOR ALL
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can view their own activity"
+    ON user_daily_activity FOR SELECT
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own activity"
+    ON user_daily_activity FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+

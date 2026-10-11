@@ -2,56 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { FileCheck2, Clock, HelpCircle, ArrowRight, Play, CheckCircle2, ShieldCheck, Sparkles, BrainCircuit } from "lucide-react";
-
-export interface AssessmentCategory {
-  id: string;
-  slug: string;
-  title: string;
-  category: string;
-  description: string;
-  questionsCount: number;
-  durationMinutes: number;
-  startingDifficulty: "Easy" | "Medium" | "Hard";
-}
-
-export const ASSESSMENT_CATEGORIES: AssessmentCategory[] = [
-  {
-    id: "cat-001",
-    slug: "dsa",
-    title: "Data Structures & Algorithms",
-    category: "Algorithms",
-    description: "Arrays, Hash Maps, Binary Trees, Dynamic Programming, & Time Complexity Analysis.",
-    questionsCount: 10,
-    durationMinutes: 20,
-    startingDifficulty: "Medium"
-  },
-  {
-    id: "cat-002",
-    slug: "dbms",
-    title: "Database Management & SQL",
-    category: "Databases",
-    description: "Relational Algebra, INNER/LEFT JOINs, Subqueries, Indexing, & ACID Transactions.",
-    questionsCount: 10,
-    durationMinutes: 15,
-    startingDifficulty: "Medium"
-  },
-  {
-    id: "cat-003",
-    slug: "os-networks",
-    title: "Operating Systems & Networking",
-    category: "Core Computer Science",
-    description: "Processes vs. Threads, Virtual Memory, TCP/IP Stack, HTTP/3, & Socket I/O.",
-    questionsCount: 10,
-    durationMinutes: 15,
-    startingDifficulty: "Medium"
-  }
-];
-
-"use client";
-
-import { useEffect, useState } from "react";
-import Link from "next/link";
 import { 
   FileCheck2, 
   Clock, 

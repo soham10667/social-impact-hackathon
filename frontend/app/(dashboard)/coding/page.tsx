@@ -28,7 +28,7 @@ import {
 export default function CodingArenaPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, recordActivity } = useAuth();
 
   // Tab State: "practice" | "bugs"
   const tabParam = searchParams.get("tab");
@@ -207,6 +207,13 @@ int main() {
       const evalData = res.data;
       setSubmissionResult(evalData);
 
+      // If passed, record streak qualifying activity
+      if (evalData.status === "passed") {
+        try {
+          recordActivity("coding_arena");
+        } catch {}
+      }
+
       // Save submission record into Supabase
       try {
         if (user?.id) {
@@ -349,6 +356,9 @@ int main() {
             ],
             ai_feedback: "All 3 test cases passed! Your fix safely handles missing dictionary keys and prevents KeyError exceptions."
           });
+          try {
+            recordActivity("coding_arena");
+          } catch {}
         } else {
           setEvaluation({
             status: "failed",

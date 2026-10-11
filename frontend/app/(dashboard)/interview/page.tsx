@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase";
 import JarvisOrb from "@/components/JarvisOrb";
 import { 
   UserCheck, 
+  User,
   Mic, 
   MicOff, 
   Play, 
@@ -28,7 +29,11 @@ import {
   CheckCircle2,
   TrendingUp,
   Radio,
-  Sparkles
+  Sparkles,
+  Bell,
+  Sun,
+  Moon,
+  ChevronRight
 } from "lucide-react";
 
 interface PreInterviewForm {
@@ -43,7 +48,7 @@ interface PreInterviewForm {
 export default function InterviewPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { profile, user } = useAuth();
+  const { profile, user, recordActivity } = useAuth();
   const { isInterviewActive, setIsInterviewActive } = useInterviewSession();
 
   const tabParam = searchParams.get("tab");
@@ -818,6 +823,11 @@ export default function InterviewPage() {
           feedback_summary: "Strong performance with commendable domain grasp and conversational adaptability.",
         });
       }
+
+      // Record daily streak activity for completed mock interview
+      try {
+        await recordActivity("mock_interview");
+      } catch {}
     }
   };
 
@@ -838,91 +848,131 @@ export default function InterviewPage() {
           : "min-h-[calc(100vh-95px)] px-4 py-3"
       }`}
     >
-      {/* Background Holographic Atmosphere */}
-      <div className="absolute inset-0 bg-[#060913] -z-20 pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(14,165,233,0.12),rgba(6,9,19,0.95))] -z-10 pointer-events-none" />
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b12_1px,transparent_1px),linear-gradient(to_bottom,#1e293b12_1px,transparent_1px)] bg-[size:3.5rem_3.5rem] -z-10 pointer-events-none" />
+      {/* Background Futuristic Holographic Atmosphere */}
+      <div className="absolute inset-0 bg-[#050B18] -z-20 pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_85%_65%_at_50%_35%,rgba(22,119,255,0.18),rgba(5,11,24,0.98))] -z-10 pointer-events-none" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(0,217,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,217,255,0.03)_1px,transparent_1px)] bg-[size:4rem_4rem] -z-10 pointer-events-none" />
 
-      {/* TOP HEADER HUD */}
-      <header className="w-full max-w-5xl flex flex-wrap items-center justify-between gap-3 z-10 pt-1 px-2 shrink-0">
-        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-gray-200 backdrop-blur-md">
-          <UserCheck className="w-3.5 h-3.5 text-cyan-400" />
-          <span className="font-semibold">{formData.fullName || "Candidate"}</span>
-          <span className="text-gray-500">•</span>
-          <span className="text-gray-400 text-[11px]">{formData.targetRole}</span>
-          {isInterviewActive && (
-            <>
-              <span className="text-gray-500">•</span>
-              <span className="text-cyan-400 font-mono text-[10px] uppercase font-bold tracking-wider">
-                {formData.interviewType}
-              </span>
-            </>
-          )}
-        </div>
+      {/* Orbit curved energy rings in background */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[720px] h-[720px] rounded-full border border-cyan-500/10 pointer-events-none -z-10" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[980px] h-[980px] rounded-full border border-blue-500/10 pointer-events-none -z-10" />
 
-        {/* Tab Switcher (When Not In Live Interview) */}
-        {!isInterviewActive && (
-          <div className="flex bg-[#0A0E1A]/80 p-1 rounded-xl border border-white/10 shrink-0 backdrop-blur-md shadow-inner">
+      {/* 1. TOP HEADER (When Not In Active Fullscreen Interview) */}
+      {!isInterviewActive && (
+        <header className="w-full max-w-6xl pb-3.5 mb-2 border-b border-blue-950/60 flex items-center justify-between gap-4 z-10 shrink-0">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
+              AI Mock Interview
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+              Practice real conversations. Get better. Land your dream role.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <button 
+              className="p-2.5 rounded-xl bg-[#081426] border border-blue-500/20 text-slate-300 hover:text-white hover:border-blue-500/50 transition-all shadow-sm"
+              title="Notifications"
+            >
+              <Bell className="w-4 h-4 text-slate-300" />
+            </button>
+            <button 
+              className="p-2.5 rounded-xl bg-[#081426] border border-blue-500/20 text-cyan-400 hover:text-cyan-300 hover:border-cyan-500/50 transition-all shadow-sm"
+              title="Futuristic Theme Active"
+            >
+              <Moon className="w-4 h-4" />
+            </button>
+          </div>
+        </header>
+      )}
+
+      {/* 2. ACTIVE FULLSCREEN HUD HEADER (Only while live interview is active) */}
+      {isInterviewActive && (
+        <header className="w-full max-w-5xl flex items-center justify-between gap-3 z-30 pt-2 px-3 shrink-0">
+          <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#081426]/90 border border-cyan-500/30 text-xs text-white backdrop-blur-md shadow-lg shadow-cyan-500/10">
+            <User className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="font-semibold text-white">{formData.fullName || "Candidate"}</span>
+            <span className="text-cyan-600">•</span>
+            <span className="text-slate-300 text-[11px]">{formData.targetRole}</span>
+            <span className="text-cyan-600">•</span>
+            <span className="text-cyan-400 font-mono text-[10px] uppercase font-bold tracking-wider">
+              {formData.interviewType}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#081426]/90 border border-cyan-500/40 text-xs font-mono text-cyan-300 shadow-inner backdrop-blur-md">
+              <Clock className="w-3.5 h-3.5 text-cyan-400" />
+              <span>{formatTimer(timerSeconds)} / {formData.durationMinutes}m</span>
+            </div>
+            <button
+              onClick={() => {
+                if (document.fullscreenElement) exitFullscreen();
+                else enterFullscreen();
+              }}
+              title={isNativeFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+              className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition flex items-center gap-1.5 text-xs font-mono"
+            >
+              {isNativeFullscreen ? (
+                <>
+                  <Minimize2 className="w-3.5 h-3.5 text-cyan-400" />
+                  <span className="text-[11px] font-bold text-cyan-300">Exit</span>
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-[11px] font-bold text-gray-300">Fullscreen</span>
+                </>
+              )}
+            </button>
+          </div>
+        </header>
+      )}
+
+      {/* 3. SUB-HEADER CONTROLS: CANDIDATE PILL & MODE TABS (When Not In Live Interview) */}
+      {!isInterviewActive && (
+        <div className="w-full max-w-4xl flex flex-col items-center justify-center gap-3.5 z-10 my-1 shrink-0">
+          {/* Candidate Information Pill */}
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#081426]/90 border border-cyan-500/30 text-xs text-slate-200 backdrop-blur-md shadow-lg shadow-cyan-500/5">
+            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+            <span className="font-bold text-white tracking-wide">{formData.fullName || "Candidate"}</span>
+            <span className="text-cyan-700 font-bold">•</span>
+            <span className="text-cyan-300 text-xs font-medium">{formData.targetRole || "Software Developer"}</span>
+          </div>
+
+          {/* Futuristic Capsule Mode Navigation */}
+          <div className="flex bg-[#081426] p-1 rounded-full border border-blue-500/30 shrink-0 shadow-lg shadow-blue-500/10">
             <button
               onClick={() => {
                 setActiveTab("interview");
                 router.replace("/interview?tab=interview");
               }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`flex items-center gap-2 px-5 py-2 rounded-full text-xs font-bold transition-all duration-300 ${
                 activeTab === "interview"
-                  ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/20"
-                  : "text-mutedText hover:text-white"
+                  ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-md shadow-blue-500/30"
+                  : "text-slate-400 hover:text-white"
               }`}
             >
-              <Radio className="w-3.5 h-3.5 text-cyan-300" /> Live Voice Arena
+              <Radio className="w-3.5 h-3.5 text-cyan-300" />
+              <span>Live Voice Arena</span>
             </button>
             <button
               onClick={() => {
                 setActiveTab("timemachine");
                 router.replace("/interview?tab=timemachine");
               }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`flex items-center gap-2 px-5 py-2 rounded-full text-xs font-bold transition-all duration-300 ${
                 activeTab === "timemachine"
-                  ? "bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-md shadow-purple-500/20"
-                  : "text-mutedText hover:text-white"
+                  ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/30"
+                  : "text-slate-400 hover:text-white"
               }`}
             >
-              <GitBranch className="w-3.5 h-3.5 text-purple-300" /> Time Machine
+              <GitBranch className="w-3.5 h-3.5 text-purple-300" />
+              <span>Time Machine</span>
             </button>
           </div>
-        )}
-
-        <div className="flex items-center gap-2">
-          {isInterviewActive && (
-            <>
-              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-black/40 border border-cyan-500/30 text-xs font-mono text-cyan-300 shadow-inner backdrop-blur-md">
-                <Clock className="w-3.5 h-3.5 text-cyan-400" />
-                <span>{formatTimer(timerSeconds)} / {formData.durationMinutes}m</span>
-              </div>
-              <button
-                onClick={() => {
-                  if (document.fullscreenElement) exitFullscreen();
-                  else enterFullscreen();
-                }}
-                title={isNativeFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition flex items-center gap-1.5 text-xs font-mono"
-              >
-                {isNativeFullscreen ? (
-                  <>
-                    <Minimize2 className="w-3.5 h-3.5 text-cyan-400" />
-                    <span className="text-[11px] font-bold text-cyan-300">Exit Fullscreen</span>
-                  </>
-                ) : (
-                  <>
-                    <Maximize2 className="w-3.5 h-3.5 text-gray-400" />
-                    <span className="text-[11px] font-bold text-gray-300">Fullscreen</span>
-                  </>
-                )}
-              </button>
-            </>
-          )}
         </div>
-      </header>
+      )}
 
       {/* TIME MACHINE VIEW (When tab === "timemachine" and not in active session) */}
       {!isInterviewActive && activeTab === "timemachine" ? (
@@ -1112,125 +1162,186 @@ export default function InterviewPage() {
           </div>
         </main>
       ) : (
-        /* CENTER: HORIZONTALLY AND VERTICALLY CENTERED JARVIS ORB & SUBTITLES */
-        <main className="flex-1 w-full max-w-4xl flex flex-col items-center justify-center relative z-10 py-2 my-auto text-center">
-          <div className="flex flex-col items-center justify-center w-full">
-            <JarvisOrb
-              isAiSpeaking={isAiSpeaking}
-              isCandidateSpeaking={isCandidateSpeaking}
-              isAiThinking={isAiThinking}
-              isInterviewActive={isInterviewActive}
-              audioVolume={micVolume}
-            />
+        /* CENTER: HORIZONTALLY AND VERTICALLY CENTERED FUTURISTIC AI ORB & STAGE */
+        <main className="flex-1 w-full max-w-5xl flex flex-col items-center justify-center relative z-10 py-1 my-auto text-center">
+          {/* Central Stage Container with Subtle Symmetrical Connectors (Left & Right) */}
+          <div className="relative w-full flex items-center justify-center">
+            {/* Left Decorative Information (Hidden on mobile) */}
+            {!isInterviewActive && (
+              <div className="hidden lg:flex flex-col items-end gap-16 absolute left-4 xl:left-8 top-1/2 -translate-y-1/2 select-none pointer-events-none">
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-[11px] font-extrabold uppercase tracking-widest text-cyan-400 font-mono">Real Questions</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Adaptive Role Calibrated</p>
+                  </div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#00D9FF]" />
+                  <div className="w-12 h-px bg-gradient-to-r from-cyan-400/80 to-transparent" />
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-[11px] font-extrabold uppercase tracking-widest text-blue-400 font-mono">Natural Conversation</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Real-Time Spoken Audio</p>
+                  </div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-[0_0_8px_#2563EB]" />
+                  <div className="w-12 h-px bg-gradient-to-r from-blue-400/80 to-transparent" />
+                </div>
+              </div>
+            )}
+
+            {/* Centered Holographic AI Orb */}
+            <div className="relative flex flex-col items-center justify-center">
+              <JarvisOrb
+                isAiSpeaking={isAiSpeaking}
+                isCandidateSpeaking={isCandidateSpeaking}
+                isAiThinking={isAiThinking}
+                isInterviewActive={isInterviewActive}
+                audioVolume={micVolume}
+              />
+            </div>
+
+            {/* Right Decorative Information (Hidden on mobile) */}
+            {!isInterviewActive && (
+              <div className="hidden lg:flex flex-col items-start gap-16 absolute right-4 xl:right-8 top-1/2 -translate-y-1/2 select-none pointer-events-none">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-px bg-gradient-to-l from-cyan-400/80 to-transparent" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#00D9FF]" />
+                  <div className="text-left">
+                    <p className="text-[11px] font-extrabold uppercase tracking-widest text-cyan-400 font-mono">Personalized Feedback</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Objective Scoring Metrics</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-px bg-gradient-to-l from-blue-400/80 to-transparent" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-[0_0_8px_#2563EB]" />
+                  <div className="text-left">
+                    <p className="text-[11px] font-extrabold uppercase tracking-widest text-blue-400 font-mono">Build Confidence</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Stress-Free Simulation</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* REAL-TIME TWO-WAY CINEMATIC SUBTITLES (Responsive clamp without page overflow) */}
-          <div className="w-full max-w-2xl min-h-[72px] max-h-[16vh] flex items-center justify-center text-center px-4 mt-2 overflow-hidden shrink-0">
-            <AnimatePresence mode="wait">
-              {aiCurrentSubtitle ? (
-                <motion.div
-                  key="ai-sub"
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="space-y-0.5 max-h-full overflow-hidden"
-                >
-                  <span className="text-[10px] font-mono uppercase tracking-widest font-extrabold text-cyan-400 block">
-                    Interviewer
-                  </span>
-                  <p className="text-sm sm:text-base font-medium text-cyan-50 leading-snug drop-shadow-md line-clamp-3">
-                    &ldquo;{aiCurrentSubtitle}&rdquo;
-                    {isAiSpeaking && (
-                      <span className="inline-block w-1.5 h-3.5 ml-1 bg-cyan-400 rounded-sm animate-pulse align-middle shadow-sm shadow-cyan-400" />
-                    )}
-                  </p>
-                </motion.div>
-              ) : (candidateLiveSubtitle || candidateInterimSubtitle) ? (
-                <motion.div
-                  key="cand-sub"
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="space-y-0.5 max-h-full overflow-hidden"
-                >
-                  <span className="text-[10px] font-mono uppercase tracking-widest font-extrabold text-purple-400 block">
-                    {formData.fullName || "Candidate"}
-                  </span>
-                  <p className="text-sm sm:text-base font-medium text-purple-100 leading-snug drop-shadow-md line-clamp-3">
-                    &ldquo;
-                    <span>{candidateLiveSubtitle}</span>
-                    {candidateInterimSubtitle && (
-                      <span className="text-purple-300 italic opacity-85"> {candidateInterimSubtitle}</span>
-                    )}
-                    &rdquo;
-                    {isCandidateSpeaking && (
-                      <span className="inline-block w-1.5 h-3.5 ml-1 bg-purple-400 rounded-sm animate-pulse align-middle shadow-sm shadow-purple-400" />
-                    )}
-                  </p>
-                </motion.div>
-              ) : isAiThinking ? (
-                <motion.div
-                  key="thinking-sub"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="flex items-center justify-center gap-2 text-xs font-mono text-amber-300/90"
-                >
-                  <Loader2 className="w-3.5 h-3.5 text-amber-400 animate-spin" />
-                  <span>Formulating response...</span>
-                </motion.div>
-              ) : (
-                <p className="text-xs text-gray-500 font-mono tracking-wider">
-                  {isInterviewActive
-                    ? "Speak into microphone to answer • Interrupt anytime"
-                    : "Click 'Initialize JARVIS' to set preferences and launch voice interview"}
+          {/* DYNAMIC CALL-TO-ACTION & READY PROMPT (When Interview is NOT active) */}
+          {!isInterviewActive && (
+            <div className="mt-4 sm:mt-6 flex flex-col items-center justify-center space-y-3 z-20">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight drop-shadow-md">
+                  Your AI Interviewer is Ready
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-md mx-auto">
+                  Click the button below to start a realistic, voice-based mock interview.
                 </p>
-              )}
-            </AnimatePresence>
-          </div>
+              </div>
+
+              {/* Large Premium Start Voice Interview Button matching reference */}
+              <motion.button
+                whileHover={{ scale: 1.03, boxShadow: "0 0 32px rgba(0,217,255,0.45)" }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setIsModalOpen(true)}
+                className="mt-2 bg-gradient-to-r from-cyan-400 via-blue-600 to-indigo-600 hover:from-cyan-300 hover:to-indigo-500 text-white font-extrabold text-sm sm:text-base px-8 py-3.5 rounded-full flex items-center gap-3 shadow-xl shadow-cyan-500/25 border border-cyan-300/40 transition-all duration-200"
+              >
+                <Mic className="w-5 h-5 text-white" />
+                <span>Start Voice Interview →</span>
+              </motion.button>
+            </div>
+          )}
+
+          {/* REAL-TIME SYNCHRONIZED SUBTITLES (Only during Active Live Interview) */}
+          {isInterviewActive && (
+            <div className="w-full max-w-2xl min-h-[72px] max-h-[16vh] flex items-center justify-center text-center px-4 mt-3 overflow-hidden shrink-0 z-20">
+              <AnimatePresence mode="wait">
+                {aiCurrentSubtitle ? (
+                  <motion.div
+                    key="ai-sub"
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="space-y-0.5 max-h-full overflow-hidden"
+                  >
+                    <span className="text-[10px] font-mono uppercase tracking-widest font-extrabold text-cyan-400 block">
+                      AI Interviewer
+                    </span>
+                    <p className="text-sm sm:text-base font-medium text-cyan-50 leading-snug drop-shadow-md line-clamp-3">
+                      &ldquo;{aiCurrentSubtitle}&rdquo;
+                      {isAiSpeaking && (
+                        <span className="inline-block w-1.5 h-3.5 ml-1 bg-cyan-400 rounded-sm animate-pulse align-middle shadow-sm shadow-cyan-400" />
+                      )}
+                    </p>
+                  </motion.div>
+                ) : (candidateLiveSubtitle || candidateInterimSubtitle) ? (
+                  <motion.div
+                    key="cand-sub"
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="space-y-0.5 max-h-full overflow-hidden"
+                  >
+                    <span className="text-[10px] font-mono uppercase tracking-widest font-extrabold text-purple-400 block">
+                      {formData.fullName || "Candidate"}
+                    </span>
+                    <p className="text-sm sm:text-base font-medium text-purple-100 leading-snug drop-shadow-md line-clamp-3">
+                      &ldquo;
+                      <span>{candidateLiveSubtitle}</span>
+                      {candidateInterimSubtitle && (
+                        <span className="text-purple-300 italic opacity-85"> {candidateInterimSubtitle}</span>
+                      )}
+                      &rdquo;
+                      {isCandidateSpeaking && (
+                        <span className="inline-block w-1.5 h-3.5 ml-1 bg-purple-400 rounded-sm animate-pulse align-middle shadow-sm shadow-purple-400" />
+                      )}
+                    </p>
+                  </motion.div>
+                ) : isAiThinking ? (
+                  <motion.div
+                    key="thinking-sub"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex items-center justify-center gap-2 text-xs font-mono text-amber-300/90"
+                  >
+                    <Loader2 className="w-3.5 h-3.5 text-amber-400 animate-spin" />
+                    <span>Formulating response...</span>
+                  </motion.div>
+                ) : (
+                  <p className="text-xs text-slate-400 font-mono tracking-wider">
+                    Speak into microphone to answer • Interrupt anytime
+                  </p>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
         </main>
       )}
 
-      {/* BOTTOM CONTROLS BAR (Shown when activeTab === 'interview' or interview is active) */}
-      {(isInterviewActive || activeTab === "interview") && (
-        <footer className="w-full max-w-xl flex items-center justify-center gap-3 z-20 pb-1 sm:pb-2 shrink-0">
-          <div className="flex items-center gap-3 p-2 rounded-2xl bg-black/60 border border-white/10 backdrop-blur-2xl shadow-2xl">
-            {!isInterviewActive ? (
-              <motion.button
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.96 }}
-                onClick={() => setIsModalOpen(true)}
-                className="relative group bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-extrabold text-xs px-6 py-3 rounded-xl flex items-center gap-2.5 shadow-lg shadow-cyan-500/25 transition border border-cyan-300/30"
-              >
-                <Play className="w-4 h-4 fill-current text-white" />
-                <span>Initialize JARVIS</span>
-              </motion.button>
-            ) : (
-              <motion.button
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.96 }}
-                onClick={handleEndInterview}
-                className="bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold text-xs px-5 py-3 rounded-xl flex items-center gap-2 shadow-lg shadow-red-600/30 transition border border-rose-400/30"
-              >
-                <Square className="w-4 h-4 fill-current" />
-                <span>End Interview</span>
-              </motion.button>
-            )}
+      {/* ACTIVE INTERVIEW BOTTOM CONTROLS (Only during Live Interview) */}
+      {isInterviewActive && (
+        <footer className="w-full max-w-md flex items-center justify-center gap-3 z-30 pb-3 sm:pb-4 shrink-0">
+          <div className="flex items-center gap-3 p-2 rounded-2xl bg-[#081426]/90 border border-blue-500/30 backdrop-blur-2xl shadow-2xl">
+            <motion.button
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={handleEndInterview}
+              className="bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold text-xs px-5 py-3 rounded-xl flex items-center gap-2 shadow-lg shadow-red-600/30 transition border border-rose-400/30"
+            >
+              <Square className="w-4 h-4 fill-current" />
+              <span>End Interview</span>
+            </motion.button>
 
-            {isInterviewActive && (
-              <motion.button
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.96 }}
-                onClick={toggleMute}
-                className={`p-3 rounded-xl border transition shadow-md ${
-                  isMuted
-                    ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                    : "bg-white/5 hover:bg-white/10 text-gray-200 border-white/10"
-                }`}
-              >
-                {isMuted ? <MicOff className="w-4 h-4 text-amber-400" /> : <Mic className="w-4 h-4 text-cyan-400" />}
-              </motion.button>
-            )}
+            <motion.button
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={toggleMute}
+              className={`p-3 rounded-xl border transition shadow-md ${
+                isMuted
+                  ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                  : "bg-white/5 hover:bg-white/10 text-gray-200 border-white/10"
+              }`}
+            >
+              {isMuted ? <MicOff className="w-4 h-4 text-amber-400" /> : <Mic className="w-4 h-4 text-cyan-400" />}
+            </motion.button>
           </div>
         </footer>
       )}

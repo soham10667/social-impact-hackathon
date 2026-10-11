@@ -12,6 +12,7 @@ import {
   getInitialQuestion, 
   getNextAdaptiveQuestion 
 } from "../examEngine";
+import { useAuth } from "@/context/AuthContext";
 import { 
   Clock, 
   HelpCircle, 
@@ -31,6 +32,7 @@ import {
 export default function AdaptiveExamContainer() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { recordActivity } = useAuth();
   const slug = searchParams.get("slug") || "dsa";
 
   const [category, setCategory] = useState<AssessmentCategory>(
@@ -145,6 +147,10 @@ export default function AdaptiveExamContainer() {
 
     setEvaluationReport(report);
     setIsCompleted(true);
+
+    try {
+      recordActivity("technical_assessment");
+    } catch {}
   };
 
   const formatTime = (totalSecs: number) => {

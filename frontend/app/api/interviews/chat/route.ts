@@ -55,6 +55,8 @@ CRITICAL CONVERSATIONAL RULES:
 5. If the candidate asks a question or asks for clarification, explain it succinctly and naturally, then seamlessly proceed with a relevant follow-up.
 6. Do NOT use markdown asterisks (*, **, #), bullet points, numbers, or lists. Output plain conversational spoken text only.`;
 
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
+
         const geminiResp = await fetch(geminiUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },

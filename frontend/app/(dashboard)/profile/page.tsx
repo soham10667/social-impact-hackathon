@@ -15,7 +15,6 @@ import {
   CheckCircle2, 
   AlertCircle,
   Save,
-  Cpu,
   Lock,
   Layers
 } from "lucide-react";
@@ -23,7 +22,7 @@ import {
 export default function ProfileAndSettingsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user, profile } = useAuth();
+  const { user, profile, updateLocalProfile } = useAuth();
 
   const tabParam = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState<"profile" | "settings">(
@@ -49,8 +48,6 @@ export default function ProfileAndSettingsPage() {
   const [targetRole, setTargetRole] = useState(profile?.target_job_role || "Full-Stack Developer");
   const [preferredLanguage, setPreferredLanguage] = useState("Python / JavaScript");
   const [graduationYear, setGraduationYear] = useState("2026");
-  const [llmProvider, setLlmProvider] = useState("Google Gemini 1.5 Pro (Default)");
-  const [editorTheme, setEditorTheme] = useState("Dark Navy");
 
   // Optional Password Update State
   const [newPassword, setNewPassword] = useState("");
@@ -151,7 +148,7 @@ export default function ProfileAndSettingsPage() {
       const cleanRole = targetRole.trim();
       const gradYearNum = parseInt(graduationYear) || 2026;
 
-      // 1. Update in local storage for instant sync across session
+      // 1. Update in local storage & AuthContext for instant sync across session
       if (typeof window !== "undefined") {
         const stored = localStorage.getItem("preppilot_user");
         const parsed = stored ? JSON.parse(stored) : {};
@@ -162,6 +159,12 @@ export default function ProfileAndSettingsPage() {
           target_role: cleanRole,
         }));
       }
+
+      updateLocalProfile({
+        full_name: cleanName,
+        target_job_role: cleanRole,
+        email: email,
+      });
 
       // 2. Update Supabase if authenticated
       if (user?.id) {
@@ -408,6 +411,7 @@ export default function ProfileAndSettingsPage() {
                   <label className="text-xs text-slate-300 block mb-1.5 font-semibold">New Password</label>
                   <input
                     type="password"
+                    autoComplete="new-password"
                     value={newPassword}
                     onChange={(e) => {
                       setNewPassword(e.target.value);
@@ -429,6 +433,7 @@ export default function ProfileAndSettingsPage() {
                   <label className="text-xs text-slate-300 block mb-1.5 font-semibold">Confirm New Password</label>
                   <input
                     type="password"
+                    autoComplete="new-password"
                     value={confirmNewPassword}
                     onChange={(e) => {
                       setConfirmNewPassword(e.target.value);
@@ -445,38 +450,6 @@ export default function ProfileAndSettingsPage() {
                       <AlertCircle className="w-3 h-3 shrink-0" /> {errors.confirmNewPassword}
                     </p>
                   )}
-                </div>
-              </div>
-            </div>
-
-            {/* Platform & AI Engine Preferences */}
-            <div className="bg-[#121829] p-6 rounded-2xl border border-[#1E273E] space-y-4 shadow-xl">
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <Cpu className="w-4 h-4 text-purple-400" /> AI & Platform Preferences
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <label className="text-xs text-slate-300 block mb-1.5 font-semibold">Primary LLM Provider</label>
-                  <select
-                    value={llmProvider}
-                    onChange={(e) => setLlmProvider(e.target.value)}
-                    className="w-full bg-[#0D1220] border border-slate-800 rounded-xl p-3.5 text-white text-sm focus:outline-none focus:border-blue-500"
-                  >
-                    <option>Google Gemini 1.5 Pro (Default)</option>
-                    <option>Mistral Large API</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-300 block mb-1.5 font-semibold">Editor Theme</label>
-                  <select
-                    value={editorTheme}
-                    onChange={(e) => setEditorTheme(e.target.value)}
-                    className="w-full bg-[#0D1220] border border-slate-800 rounded-xl p-3.5 text-white text-sm focus:outline-none focus:border-blue-500"
-                  >
-                    <option>Dark Navy (PrepPilot Theme)</option>
-                    <option>Monokai Pro</option>
-                    <option>VS Code Dark+</option>
-                  </select>
                 </div>
               </div>
             </div>

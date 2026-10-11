@@ -26,8 +26,10 @@ import {
   Layers
 } from "lucide-react";
 import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
 
 export default function DashboardPage() {
+  const { streak } = useAuth();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -46,7 +48,6 @@ export default function DashboardPage() {
           coding_problems_solved: 24,
           assessments_completed: 5,
           average_interview_score: 84.5,
-          practice_streak: 7,
           readiness_index: 82,
           recent_activity: [
             { title: "Bug Arena — Python KeyError In Auth Flow", score: "100%", date: "Today", type: "bug", status: "Resolved" },
@@ -197,17 +198,23 @@ export default function DashboardPage() {
         <div className="group relative p-6 rounded-2xl bg-[#121829] border border-[#1E273E] hover:border-amber-500/40 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-amber-500/5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Daily Practice Streak</span>
-            <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
-              <Flame className="w-4 h-4 fill-amber-400" />
+            <div className={`w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform ${streak?.current_streak > 0 ? "animate-pulse" : ""}`}>
+              <Flame className={`w-4 h-4 fill-amber-400 text-amber-400 ${(streak?.current_streak ?? 0) > 0 ? "scale-110 drop-shadow-[0_0_6px_rgba(245,158,11,0.5)]" : "opacity-60"}`} />
             </div>
           </div>
           <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-amber-400 tracking-tight">{data.practice_streak} Days</span>
-            <span className="text-xs text-amber-300/80 font-semibold">Active Streak</span>
+            <span className="text-3xl font-extrabold text-amber-400 tracking-tight">
+              {(streak?.current_streak ?? 0) === 1 ? "1 Day" : `${streak?.current_streak ?? 0} Days`}
+            </span>
+            <span className="text-xs text-amber-300/80 font-semibold">
+              {(streak?.current_streak ?? 0) > 0 ? "Active Streak" : "Start Today"}
+            </span>
           </div>
           <div className="mt-3 flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800">
-            <span>Next Milestone</span>
-            <span className="text-amber-400 font-bold">10-Day Badge</span>
+            <span>All-time Best</span>
+            <span className="text-amber-400 font-bold">
+              {streak?.longest_streak ? `${streak.longest_streak} ${streak.longest_streak === 1 ? "Day" : "Days"}` : "0 Days"}
+            </span>
           </div>
         </div>
       </div>

@@ -39,6 +39,17 @@ code, pre, .font-mono {
   background: #3B82F6;
 }
 
+/* Fix Browser Autofill White Background on Dark Theme */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #0D1220 inset !important;
+  -webkit-text-fill-color: #F8FAFC !important;
+  caret-color: #F8FAFC !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 /* Glassmorphism & Card Utilities */
 .glass-panel {
   background: rgba(20, 27, 45, 0.7);
@@ -76,12 +87,14 @@ code, pre, .font-mono {
 .gradient-text-blue {
   background: linear-gradient(135deg, #60A5FA 0%, #A78BFA 50%, #38BDF8 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .gradient-text-emerald {
   background: linear-gradient(135deg, #34D399 0%, #6EE7B7 50%, #60A5FA 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 

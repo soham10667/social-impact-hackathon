@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import axios from "axios";
+import { useAuth } from "@/context/AuthContext";
 import { 
   Map, 
   GitFork, 
@@ -61,6 +62,7 @@ const nodeTypes = { skillNode: CustomSkillNode };
 export default function RoadmapPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { recordActivity } = useAuth();
 
   const tabParam = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState<"roadmap" | "graph">(
@@ -81,13 +83,22 @@ export default function RoadmapPage() {
   };
 
   // --- ROADMAP SCHEDULE DATA ---
-  const days = [
+  const [scheduleTasks, setScheduleTasks] = useState([
     { day: 1, title: "Python Runtime & Dictionary Key Errors", type: "Bug Investigation", path: "/coding?tab=bugs", completed: true },
     { day: 2, title: "SQL JOIN Aggregation & Subqueries", type: "Technical Assessment", path: "/assessments", completed: true },
     { day: 3, title: "React State Management & Concurrent Mode", type: "AI Mock Interview", path: "/interview", completed: true },
     { day: 4, title: "Two Sum & Hash Map Algorithmic Optimization", type: "Coding Practice", path: "/coding?tab=practice", completed: false },
     { day: 5, title: "System Design - Rate Limiter Architecture", type: "Architecture Study", path: "/assessments", completed: false },
-  ];
+  ]);
+
+  const handleCompleteTask = async (dayNumber: number) => {
+    setScheduleTasks((prev) =>
+      prev.map((t) => (t.day === dayNumber ? { ...t, completed: true } : t))
+    );
+    try {
+      await recordActivity("learning_roadmap");
+    } catch {}
+  };
 
   // --- SKILL GRAPH STATE ---
   const [nodes, setNodes] = useState<Node[]>([]);
@@ -195,7 +206,7 @@ export default function RoadmapPage() {
             </div>
 
             <div className="space-y-3 pt-2">
-              {days.map((d) => (
+              {scheduleTasks.map((d) => (
                 <div 
                   key={d.day} 
                   className={`p-4 rounded-2xl border flex items-center justify-between transition-all duration-200 ${
@@ -216,19 +227,29 @@ export default function RoadmapPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex items-center gap-2.5 shrink-0">
                     {d.completed ? (
                       <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-bold bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20">
                         <CheckCircle2 className="w-3.5 h-3.5" /> Finished
                       </span>
                     ) : (
-                      <button
-                        onClick={() => router.push(d.path)}
-                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-1.5 transition shadow-md shadow-blue-500/20"
-                      >
-                        <span>Start</span>
-                        <ArrowRight className="w-3 h-3" />
-                      </button>
+                      <>
+                        <button
+                          onClick={() => handleCompleteTask(d.day)}
+                          title="Mark task completed and build streak"
+                          className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5 transition"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Mark Done</span>
+                        </button>
+                        <button
+                          onClick={() => router.push(d.path)}
+                          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition shadow-md shadow-blue-500/20"
+                        >
+                          <span>Start</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
