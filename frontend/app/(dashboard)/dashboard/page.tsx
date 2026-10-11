@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import { BACKEND_URL } from "@/lib/api";
 
 export default function DashboardPage() {
   const { streak } = useAuth();
@@ -30,7 +31,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     // Fetch data from Python FastAPI Backend
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const apiUrl = BACKEND_URL;
     axios.get(`${apiUrl}/api/dashboard/demo-candidate`)
       .then((res) => setData(res.data))
       .catch(() => {

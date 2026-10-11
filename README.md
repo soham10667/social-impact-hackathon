@@ -200,7 +200,29 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-### 4. Backend Setup (Optional FastAPI Engine)
+### 4. Deploying Frontend to Vercel
+
+To deploy the **PrepPilot AI** Next.js frontend to Vercel:
+
+1. Go to [Vercel Dashboard](https://vercel.com/new).
+2. Import your GitHub repository: `https://github.com/soham10667/social-impact-hackathon`.
+3. Configure the Project Settings:
+   - **Project Name**: `social-impact-frontend`
+   - **Framework Preset**: `Next.js`
+   - **Root Directory**: Click *Edit* and select `frontend`
+   - **Build Command**: `npm run build` (or leave default)
+   - **Output Directory**: `.next` (leave default)
+   - **Install Command**: `npm install` (leave default)
+4. Add the following **Environment Variables** in Vercel:
+   ```env
+   NEXT_PUBLIC_API_URL=https://social-impact-hackathon.vercel.app
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+   MISTRAL_API_KEY=your_api_key_here
+   DEEPGRAM_API_KEY=your_deepgram_api_key_here
+   ONECOMPILER_API_KEY=your_onecompiler_api_key_here
+   ```
+5. Click **Deploy**. Your frontend will be live on `https://social-impact-frontend.vercel.app`!
 
 If utilizing the auxiliary Python FastAPI agents:
 

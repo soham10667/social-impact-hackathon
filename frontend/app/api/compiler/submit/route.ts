@@ -88,7 +88,7 @@ __runTests();
 }
 
 async function callOneCompilerDirect(language: string, code: string) {
-  const apiKey = (process.env.ONECOMPILER_API_KEY || "oc_455tuk5sm_455tuk5t8_8c191f58b8e70fff8de9af01be05b5df58e086e5c9a44205").trim();
+  const apiKey = (process.env.ONECOMPILER_API_KEY || "").trim();
   const langKey = language.toLowerCase().trim();
   const langConfig = LANGUAGE_MAP[langKey] || { language: langKey, filename: "main.txt" };
 
@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
     }
 
     // First try FastAPI backend if reachable
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || "https://social-impact-hackathon.vercel.app";
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 4000);

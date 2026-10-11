@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import axios from "axios";
+import { BACKEND_URL } from "@/lib/api";
 import { 
   BarChart3, 
   BrainCircuit, 
@@ -38,7 +39,7 @@ export default function AnalyticsPage() {
   const [mistakeData, setMistakeData] = useState<any>(null);
 
   useEffect(() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const apiUrl = BACKEND_URL;
     axios.get(`${apiUrl}/api/dashboard/demo-candidate`)
       .then((res) => setDashboardData(res.data))
       .catch(() => {

@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { BACKEND_URL } from "@/lib/api";
 import { 
   Code, 
   Bug, 
@@ -51,28 +52,30 @@ export default function CodingArenaPage() {
 
   // --- MULTI-LANGUAGE MINIMAL TEMPLATES (NO PRE-WRITTEN SOLUTIONS) ---
   const languageTemplates: Record<string, string> = {
-    python: `def solution():
+    python: `def solution(nums, target):
+    # Return indices [i, j] of two numbers that add up to target
     pass
 
 if __name__ == "__main__":
-    pass
+    print(solution([2, 7, 11, 15], 9))
 `,
-    javascript: `function solution() {
-    // Write your code here
+    javascript: `function solution(nums, target) {
+    // Return indices [i, j] of two numbers that add up to target
 }
 
 // Example execution
-solution();
+console.log(solution([2, 7, 11, 15], 9));
 `,
     java: `import java.util.*;
 
 public class Main {
-    public static void solution() {
-        // Write your code here
+    public static int[] solution(int[] nums, int target) {
+        // Return indices [i, j]
+        return new int[]{};
     }
 
     public static void main(String[] args) {
-        solution();
+        System.out.println(Arrays.toString(solution(new int[]{2, 7, 11, 15}, 9)));
     }
 }
 `,
@@ -81,12 +84,13 @@ public class Main {
 
 using namespace std;
 
-void solution() {
-    // Write your code here
+vector<int> solution(vector<int>& nums, int target) {
+    // Return indices [i, j]
+    return {};
 }
 
 int main() {
-    solution();
+    auto res = solution(vector<int>{2, 7, 11, 15}, 9);
     return 0;
 }
 `
@@ -142,7 +146,7 @@ int main() {
         });
       } catch (relErr) {
         // Fallback to direct backend URL if specified
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const apiUrl = BACKEND_URL;
         res = await axios.post(`${apiUrl}/api/compiler/execute`, {
           language: selectedLanguage,
           code: practiceCode,
@@ -195,7 +199,7 @@ int main() {
           code: practiceCode
         });
       } catch (relErr) {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const apiUrl = BACKEND_URL;
         res = await axios.post(`${apiUrl}/api/compiler/submit`, {
           user_id: user?.id || "demo-candidate",
           problem_slug: "two-sum",
@@ -295,7 +299,7 @@ int main() {
   ];
 
   useEffect(() => {
-    axios.get("http://localhost:8000/api/bugs/scenarios")
+    axios.get(`${BACKEND_URL}/api/bugs/scenarios`)
       .then((res) => {
         setScenarios(res.data);
         if (res.data.length > 0) {
@@ -331,7 +335,7 @@ int main() {
     if (!selectedScenario || submittingBug) return;
     setSubmittingBug(true);
 
-    axios.post("http://localhost:8000/api/bugs/evaluate", {
+    axios.post(`${BACKEND_URL}/api/bugs/evaluate`, {
       student_id: user?.id || "demo-candidate",
       scenario_id: selectedScenario.id,
       submitted_code: bugCode,

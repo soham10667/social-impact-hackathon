@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
+import { BACKEND_URL } from "@/lib/api";
 import { 
   Map, 
   GitFork, 
@@ -121,7 +122,7 @@ export default function RoadmapPage() {
   ];
 
   useEffect(() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const apiUrl = BACKEND_URL;
     axios.get(`${apiUrl}/api/innovations/graph/demo-candidate`)
       .then((res) => {
         if (res.data.nodes?.length > 0) {

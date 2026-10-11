@@ -183,7 +183,8 @@ export default function RegisterPage() {
     const cleanName = fullName.trim();
 
     try {
-      const redirectOrigin = typeof window !== "undefined" ? window.location.origin : "";
+      const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/+$/, "");
+      const redirectOrigin = appUrl || (typeof window !== "undefined" ? window.location.origin : "");
 
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,

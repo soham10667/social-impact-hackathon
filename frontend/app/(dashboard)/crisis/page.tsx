@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { AlertTriangle, Server, Activity, ShieldAlert, CheckCircle } from "lucide-react";
+import { BACKEND_URL } from "@/lib/api";
 
 export default function CrisisSimulatorPage() {
   const [scenarios, setScenarios] = useState<any[]>([]);
@@ -33,7 +34,7 @@ export default function CrisisSimulatorPage() {
   ];
 
   useEffect(() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const apiUrl = BACKEND_URL;
     axios.get(`${apiUrl}/api/crisis/scenarios`)
       .then((res) => {
         setScenarios(res.data);
@@ -46,7 +47,7 @@ export default function CrisisSimulatorPage() {
   }, []);
 
   const handleTakeAction = (key: string) => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const apiUrl = BACKEND_URL;
     axios.post(`${apiUrl}/api/crisis/action`, {
       session_id: "crisis-session-1",
       action_key: key,
