@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
@@ -59,7 +59,7 @@ const CustomSkillNode = ({ data }: { data: any }) => {
 
 const nodeTypes = { skillNode: CustomSkillNode };
 
-export default function RoadmapPage() {
+function RoadmapPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { recordActivity } = useAuth();
@@ -338,3 +338,12 @@ export default function RoadmapPage() {
     </div>
   );
 }
+
+export default function RoadmapPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-[#6B7280]">Loading career roadmap...</div>}>
+      <RoadmapPageContent />
+    </Suspense>
+  );
+}
+

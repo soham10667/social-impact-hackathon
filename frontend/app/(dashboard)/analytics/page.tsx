@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import axios from "axios";
 import { BACKEND_URL } from "@/lib/api";
@@ -12,7 +12,7 @@ import {
   ArrowUpRight
 } from "lucide-react";
 
-export default function AnalyticsPage() {
+function AnalyticsPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -288,3 +288,12 @@ export default function AnalyticsPage() {
     </div>
   );
 }
+
+export default function AnalyticsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-[#6B7280]">Loading analytics...</div>}>
+      <AnalyticsPageContent />
+    </Suspense>
+  );
+}
+

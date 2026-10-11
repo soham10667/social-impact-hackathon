@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
@@ -26,7 +26,7 @@ import {
   Award
 } from "lucide-react";
 
-export default function CodingArenaPage() {
+function CodingArenaPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user, recordActivity } = useAuth();
@@ -990,3 +990,12 @@ int main() {
     </div>
   );
 }
+
+export default function CodingArenaPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-[#6B7280]">Loading coding arena...</div>}>
+      <CodingArenaPageContent />
+    </Suspense>
+  );
+}
+

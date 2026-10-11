@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
@@ -59,7 +59,7 @@ type AgentState =
   | "PAUSED"
   | "ERROR";
 
-export default function InterviewPage() {
+function InterviewPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { profile, user, recordActivity } = useAuth();
@@ -2107,3 +2107,12 @@ export default function InterviewPage() {
     </div>
   );
 }
+
+export default function InterviewPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-[#6B7280]">Loading mock interview session...</div>}>
+      <InterviewPageContent />
+    </Suspense>
+  );
+}
+

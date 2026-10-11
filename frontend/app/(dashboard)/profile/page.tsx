@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -16,7 +16,7 @@ import {
   Lock
 } from "lucide-react";
 
-export default function ProfileAndSettingsPage() {
+function ProfileAndSettingsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user, profile, updateLocalProfile } = useAuth();
@@ -470,3 +470,12 @@ export default function ProfileAndSettingsPage() {
     </div>
   );
 }
+
+export default function ProfileAndSettingsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-[#6B7280]">Loading profile & settings...</div>}>
+      <ProfileAndSettingsContent />
+    </Suspense>
+  );
+}
+
