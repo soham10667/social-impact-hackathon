@@ -141,13 +141,13 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-[#080B14] text-[#F8FAFC] flex flex-col md:flex-row font-sans selection:bg-blue-500/30">
       {/* Left Branding Showcase Column */}
-      <div className="md:w-1/2 p-12 bg-gradient-to-br from-[#111827] to-[#080B14] border-r border-gray-800/80 flex flex-col justify-between relative overflow-hidden">
-        <div className="absolute top-10 left-10 w-96 h-96 bg-blue-600/10 blur-[120px] rounded-full pointer-events-none" />
-        <div className="absolute bottom-10 right-10 w-96 h-96 bg-purple-600/10 blur-[120px] rounded-full pointer-events-none" />
+      <div className="md:w-1/2 p-8 md:p-14 bg-gradient-to-br from-[#0E1322] via-[#090C16] to-[#080B14] border-r border-slate-800/80 flex flex-col justify-between relative overflow-hidden">
+        <div className="absolute top-10 left-10 w-96 h-96 bg-purple-600/10 blur-[130px] rounded-full pointer-events-none" />
+        <div className="absolute bottom-10 right-10 w-96 h-96 bg-blue-600/10 blur-[130px] rounded-full pointer-events-none" />
 
         <div className="relative z-10">
-          <Link href="/" className="inline-flex items-center gap-3 mb-12">
-            <div className="bg-gradient-to-tr from-blue-600 to-purple-600 p-2.5 rounded-xl text-white shadow-lg shadow-blue-500/30">
+          <Link href="/" className="inline-flex items-center gap-3 mb-12 group">
+            <div className="bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 p-2.5 rounded-xl text-white shadow-lg shadow-blue-500/25 group-hover:scale-105 transition-transform">
               <Sparkles className="w-6 h-6" />
             </div>
             <div>
@@ -157,56 +157,64 @@ export default function RegisterPage() {
           </Link>
 
           <h1 className="text-4xl md:text-5xl font-extrabold text-white leading-tight mb-6">
-            Join Thousands of Students Getting <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Placement Ready</span>
+            Join Candidates Getting{" "}
+            <span className="bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">
+              Placement Ready
+            </span>
           </h1>
-          <p className="text-base text-[#B6C2D2] leading-relaxed max-w-lg mb-10">
+          <p className="text-base text-slate-300 leading-relaxed max-w-lg mb-10">
             Create your account to start AI mock interviews, practice sandboxed debugging, and track your technical skill graph.
           </p>
 
           <div className="space-y-4 max-w-md">
-            <div className="flex items-center gap-3 p-3.5 rounded-xl bg-[#151D2E] border border-gray-800/80">
-              <ShieldCheck className="w-5 h-5 text-blue-400 shrink-0" />
-              <div className="text-xs text-[#B6C2D2]">
-                <strong className="text-white block">Supabase Auth Protection</strong> Secure JWT sessions & encrypted credentials
+            <div className="flex items-center gap-3.5 p-4 rounded-2xl bg-[#121829] border border-slate-800/80 hover:border-blue-500/30 transition-colors shadow-lg">
+              <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div className="text-xs text-slate-400">
+                <strong className="text-white block font-semibold">Supabase Auth Protection</strong> Secure JWT sessions & encrypted credentials
               </div>
             </div>
           </div>
         </div>
 
-        <div className="relative z-10 text-xs text-[#B6C2D2]">
+        <div className="relative z-10 text-xs text-slate-500 pt-8">
           © 2026 PrepPilot AI Inc. All rights reserved.
         </div>
       </div>
 
       {/* Right Registration Form Column */}
-      <div className="md:w-1/2 p-8 md:p-12 flex items-center justify-center bg-[#080B14]">
+      <div className="md:w-1/2 p-8 md:p-14 flex items-center justify-center bg-[#080B14] relative">
         <div className="w-full max-w-md space-y-6">
           <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-semibold mb-3">
+              <Sparkles className="w-3.5 h-3.5" /> Start For Free
+            </div>
             <h2 className="text-3xl font-extrabold text-white tracking-tight">Create Account</h2>
-            <p className="text-sm text-[#B6C2D2] mt-2">Start your technical interview preparation journey today.</p>
+            <p className="text-sm text-slate-400 mt-2">Start your technical interview preparation journey today.</p>
           </div>
 
           {errors.general && (
-            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-300 flex items-start gap-2.5">
+            <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-xs text-red-300 flex items-start gap-2.5">
               <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
               <div>{errors.general}</div>
             </div>
           )}
 
           {successMsg && (
-            <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/30 text-xs text-green-300 flex items-start gap-2.5">
-              <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0 mt-0.5" />
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300 flex items-start gap-2.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
               <div>{successMsg}</div>
             </div>
           )}
 
           <form onSubmit={handleRegister} className="space-y-4" noValidate>
             <div>
-              <label className="text-xs font-semibold text-[#B6C2D2] block mb-1.5">
+              <label className="text-xs font-semibold text-slate-300 block mb-1.5">
                 Full Name <span className="text-blue-400">*</span>
               </label>
               <div className="relative">
-                <User className="w-4 h-4 text-gray-500 absolute left-3.5 top-3.5" />
+                <User className="w-4 h-4 text-slate-500 absolute left-4 top-3.5" />
                 <input
                   type="text"
                   value={fullName}
@@ -216,8 +224,8 @@ export default function RegisterPage() {
                   }}
                   onBlur={() => handleBlur("fullName")}
                   placeholder="Alex Johnson"
-                  className={`w-full bg-[#151D2E] border rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none transition ${
-                    touched.fullName && errors.fullName ? "border-red-500/70 focus:border-red-500" : "border-gray-800 focus:border-blue-500"
+                  className={`w-full bg-[#0D1220] border rounded-xl pl-11 pr-4 py-3.5 text-sm text-white focus:outline-none transition ${
+                    touched.fullName && errors.fullName ? "border-red-500/70 focus:border-red-500" : "border-slate-800 focus:border-blue-500"
                   }`}
                 />
               </div>
@@ -229,11 +237,11 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-[#B6C2D2] block mb-1.5">
+              <label className="text-xs font-semibold text-slate-300 block mb-1.5">
                 Email Address <span className="text-blue-400">*</span>
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-gray-500 absolute left-3.5 top-3.5" />
+                <Mail className="w-4 h-4 text-slate-500 absolute left-4 top-3.5" />
                 <input
                   type="email"
                   value={email}
@@ -243,8 +251,8 @@ export default function RegisterPage() {
                   }}
                   onBlur={() => handleBlur("email")}
                   placeholder="alex@university.edu"
-                  className={`w-full bg-[#151D2E] border rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none transition ${
-                    touched.email && errors.email ? "border-red-500/70 focus:border-red-500" : "border-gray-800 focus:border-blue-500"
+                  className={`w-full bg-[#0D1220] border rounded-xl pl-11 pr-4 py-3.5 text-sm text-white focus:outline-none transition ${
+                    touched.email && errors.email ? "border-red-500/70 focus:border-red-500" : "border-slate-800 focus:border-blue-500"
                   }`}
                 />
               </div>
@@ -256,13 +264,13 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-[#B6C2D2] block mb-1.5">Target Job Role</label>
+              <label className="text-xs font-semibold text-slate-300 block mb-1.5">Target Job Role</label>
               <div className="relative">
-                <Briefcase className="w-4 h-4 text-gray-500 absolute left-3.5 top-3.5" />
+                <Briefcase className="w-4 h-4 text-slate-500 absolute left-4 top-3.5" />
                 <select
                   value={targetRole}
                   onChange={(e) => setTargetRole(e.target.value)}
-                  className="w-full bg-[#151D2E] border border-gray-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition appearance-none"
+                  className="w-full bg-[#0D1220] border border-slate-800 rounded-xl pl-11 pr-4 py-3.5 text-sm text-white focus:outline-none focus:border-blue-500 transition appearance-none"
                 >
                   <option value="Full-Stack Developer">Full-Stack Developer</option>
                   <option value="Backend Developer">Backend Developer</option>
@@ -275,11 +283,11 @@ export default function RegisterPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-semibold text-[#B6C2D2] block mb-1.5">
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
                   Password <span className="text-blue-400">*</span>
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-gray-500 absolute left-3 top-3.5" />
+                  <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
@@ -289,8 +297,8 @@ export default function RegisterPage() {
                     }}
                     onBlur={() => handleBlur("password")}
                     placeholder="Min 8 chars"
-                    className={`w-full bg-[#151D2E] border rounded-xl pl-9 pr-3 py-3 text-xs text-white focus:outline-none transition ${
-                      touched.password && errors.password ? "border-red-500/70 focus:border-red-500" : "border-gray-800 focus:border-blue-500"
+                    className={`w-full bg-[#0D1220] border rounded-xl pl-10 pr-3 py-3.5 text-xs text-white focus:outline-none transition ${
+                      touched.password && errors.password ? "border-red-500/70 focus:border-red-500" : "border-slate-800 focus:border-blue-500"
                     }`}
                   />
                 </div>
@@ -302,11 +310,11 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-[#B6C2D2] block mb-1.5">
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
                   Confirm Password <span className="text-blue-400">*</span>
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-gray-500 absolute left-3 top-3.5" />
+                  <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
                   <input
                     type={showPassword ? "text" : "password"}
                     value={confirmPassword}
@@ -316,8 +324,8 @@ export default function RegisterPage() {
                     }}
                     onBlur={() => handleBlur("confirmPassword")}
                     placeholder="Re-enter password"
-                    className={`w-full bg-[#151D2E] border rounded-xl pl-9 pr-3 py-3 text-xs text-white focus:outline-none transition ${
-                      touched.confirmPassword && errors.confirmPassword ? "border-red-500/70 focus:border-red-500" : "border-gray-800 focus:border-blue-500"
+                    className={`w-full bg-[#0D1220] border rounded-xl pl-10 pr-3 py-3.5 text-xs text-white focus:outline-none transition ${
+                      touched.confirmPassword && errors.confirmPassword ? "border-red-500/70 focus:border-red-500" : "border-slate-800 focus:border-blue-500"
                     }`}
                   />
                 </div>
@@ -330,7 +338,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="pt-1">
-              <label className="flex items-center gap-2 cursor-pointer text-xs text-[#B6C2D2]">
+              <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-400 hover:text-slate-200">
                 <input
                   type="checkbox"
                   checked={termsAccepted}
@@ -338,7 +346,7 @@ export default function RegisterPage() {
                     setTermsAccepted(e.target.checked);
                     if (touched.terms) validateField("terms", e.target.checked);
                   }}
-                  className="rounded border-gray-800 bg-[#151D2E] text-blue-600 focus:ring-0"
+                  className="rounded border-slate-700 bg-[#0D1220] text-blue-600 focus:ring-0"
                 />
                 I agree to the Terms of Service & Privacy Policy
               </label>
@@ -352,13 +360,13 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-blue-500/25 transition flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50 hover:scale-[1.01] active:scale-[0.99]"
             >
               {loading ? "Creating Account..." : "Create PrepPilot Account"} <ArrowRight className="w-4 h-4" />
             </button>
           </form>
 
-          <div className="text-center text-xs text-[#B6C2D2]">
+          <div className="text-center text-xs text-slate-400 pt-2">
             Already have an account?{" "}
             <Link href="/login" className="font-bold text-blue-400 hover:text-blue-300">
               Sign In
@@ -369,3 +377,4 @@ export default function RegisterPage() {
     </div>
   );
 }
+

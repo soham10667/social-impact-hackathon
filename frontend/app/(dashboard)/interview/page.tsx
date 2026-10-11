@@ -21,7 +21,14 @@ import {
   AlertCircle,
   Loader2,
   Maximize2,
-  Minimize2
+  Minimize2,
+  GitBranch,
+  RotateCcw,
+  ArrowRight,
+  CheckCircle2,
+  TrendingUp,
+  Radio,
+  Sparkles
 } from "lucide-react";
 
 interface PreInterviewForm {
@@ -106,6 +113,70 @@ export default function InterviewPage() {
 
   // Post-Interview Evaluation State
   const [evaluationData, setEvaluationData] = useState<any | null>(null);
+
+  // Time Machine Interactive Turns and Simulation State
+  const timeMachineTurns = [
+    {
+      id: "tm-1",
+      timestamp: "02:15",
+      question: "Explain how you design cache invalidation across distributed microservices.",
+      originalAnswer: "I usually configure a 5-minute fixed TTL on Redis so cached items expire automatically.",
+      originalScore: 68,
+      originalFeedback: "Passive TTL expiration introduces stale reads and lacks proactive consistency guarantees during database writes.",
+      suggestedAnswer: "We implement an event-driven cache invalidation pattern using Redis with Change Data Capture (CDC) via Debezium. When a primary database write commits, a domain event publishes to Kafka, which triggers proactive cache eviction with exponential backoff on retry.",
+      branchScore: 94,
+      delta: "+26%",
+      metrics: { clarity: 95, precision: 96, confidence: 92 }
+    },
+    {
+      id: "tm-2",
+      timestamp: "07:40",
+      question: "How do you diagnose and resolve memory leaks in a production Node.js service?",
+      originalAnswer: "I monitor the CPU graph in CloudWatch and restart the container if memory exceeds 90%.",
+      originalScore: 56,
+      originalFeedback: "Container restart is a temporary mitigation that disrupts active connections without identifying the root allocation leak.",
+      suggestedAnswer: "I generate heap snapshots under synthetic load using Chrome DevTools or v8-profiler, inspect retained object trees to locate detached DOM nodes or uncollected event listeners, and analyze garbage collection frequency with clinic.js.",
+      branchScore: 96,
+      delta: "+40%",
+      metrics: { clarity: 98, precision: 95, confidence: 95 }
+    },
+    {
+      id: "tm-3",
+      timestamp: "12:10",
+      question: "What are the trade-offs between adopting GraphQL vs REST APIs for customer-facing mobile apps?",
+      originalAnswer: "GraphQL is better because it avoids over-fetching data and combines multiple requests into one.",
+      originalScore: 74,
+      originalFeedback: "Good awareness of over-fetching, but omits CDN caching challenges, N+1 resolver performance hazards, and query cost limits.",
+      suggestedAnswer: "GraphQL eliminates over-fetching and delivers tailor-made mobile payloads, but complicates HTTP edge caching. It also introduces potential N+1 resolver queries requiring DataLoader batching, and demands AST depth limiting to prevent recursive denial-of-service queries.",
+      branchScore: 95,
+      delta: "+21%",
+      metrics: { clarity: 96, precision: 94, confidence: 95 }
+    }
+  ];
+
+  const [selectedTmIndex, setSelectedTmIndex] = useState<number>(0);
+  const [branchDraftAnswer, setBranchDraftAnswer] = useState<string>(timeMachineTurns[0].suggestedAnswer);
+  const [isSimulatingBranch, setIsSimulatingBranch] = useState<boolean>(false);
+  const [evaluatedTurn, setEvaluatedTurn] = useState<any>(timeMachineTurns[0]);
+
+  const handleSelectTmTurn = (idx: number) => {
+    setSelectedTmIndex(idx);
+    setBranchDraftAnswer(timeMachineTurns[idx].suggestedAnswer);
+    setEvaluatedTurn(timeMachineTurns[idx]);
+  };
+
+  const handleSimulateBranch = () => {
+    setIsSimulatingBranch(true);
+    setTimeout(() => {
+      setIsSimulatingBranch(false);
+      setEvaluatedTurn({
+        ...timeMachineTurns[selectedTmIndex],
+        branchAnswer: branchDraftAnswer,
+        branchScore: 95,
+        delta: "+27%"
+      });
+    }, 700);
+  };
 
   // Audio & Stream References
   const [deepgramKey, setDeepgramKey] = useState<string | null>(null);
@@ -773,7 +844,7 @@ export default function InterviewPage() {
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b12_1px,transparent_1px),linear-gradient(to_bottom,#1e293b12_1px,transparent_1px)] bg-[size:3.5rem_3.5rem] -z-10 pointer-events-none" />
 
       {/* TOP HEADER HUD */}
-      <header className="w-full max-w-5xl flex items-center justify-between z-10 pt-1 px-2 shrink-0">
+      <header className="w-full max-w-5xl flex flex-wrap items-center justify-between gap-3 z-10 pt-1 px-2 shrink-0">
         <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-gray-200 backdrop-blur-md">
           <UserCheck className="w-3.5 h-3.5 text-cyan-400" />
           <span className="font-semibold">{formData.fullName || "Candidate"}</span>
@@ -788,6 +859,38 @@ export default function InterviewPage() {
             </>
           )}
         </div>
+
+        {/* Tab Switcher (When Not In Live Interview) */}
+        {!isInterviewActive && (
+          <div className="flex bg-[#0A0E1A]/80 p-1 rounded-xl border border-white/10 shrink-0 backdrop-blur-md shadow-inner">
+            <button
+              onClick={() => {
+                setActiveTab("interview");
+                router.replace("/interview?tab=interview");
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                activeTab === "interview"
+                  ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/20"
+                  : "text-mutedText hover:text-white"
+              }`}
+            >
+              <Radio className="w-3.5 h-3.5 text-cyan-300" /> Live Voice Arena
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab("timemachine");
+                router.replace("/interview?tab=timemachine");
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                activeTab === "timemachine"
+                  ? "bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-md shadow-purple-500/20"
+                  : "text-mutedText hover:text-white"
+              }`}
+            >
+              <GitBranch className="w-3.5 h-3.5 text-purple-300" /> Time Machine
+            </button>
+          </div>
+        )}
 
         <div className="flex items-center gap-2">
           {isInterviewActive && (
@@ -821,125 +924,316 @@ export default function InterviewPage() {
         </div>
       </header>
 
-      {/* CENTER: HORIZONTALLY AND VERTICALLY CENTERED JARVIS ORB & SUBTITLES */}
-      <main className="flex-1 w-full max-w-4xl flex flex-col items-center justify-center relative z-10 py-2 my-auto text-center">
-        <div className="flex flex-col items-center justify-center w-full">
-          <JarvisOrb
-            isAiSpeaking={isAiSpeaking}
-            isCandidateSpeaking={isCandidateSpeaking}
-            isAiThinking={isAiThinking}
-            isInterviewActive={isInterviewActive}
-            audioVolume={micVolume}
-          />
-        </div>
+      {/* TIME MACHINE VIEW (When tab === "timemachine" and not in active session) */}
+      {!isInterviewActive && activeTab === "timemachine" ? (
+        <main className="flex-1 w-full max-w-5xl flex flex-col justify-start relative z-10 py-4 space-y-6">
+          {/* Header Banner */}
+          <div className="bg-secondaryBg/80 backdrop-blur-xl p-5 sm:p-6 rounded-2xl border border-cardBorder shadow-xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-purple-500/15 text-purple-400 border border-purple-500/30">
+                    Non-Linear Playback Engine
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/25">
+                    Live Score Delta Active
+                  </span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2.5">
+                  <GitBranch className="w-6 h-6 text-purple-400" /> Interview Time Machine
+                </h2>
+                <p className="text-xs sm:text-sm text-mutedText mt-1">
+                  Rewind any question from your mock sessions, test alternative responses, and simulate instant AI scoring deltas.
+                </p>
+              </div>
 
-        {/* REAL-TIME TWO-WAY CINEMATIC SUBTITLES (Responsive clamp without page overflow) */}
-        <div className="w-full max-w-2xl min-h-[72px] max-h-[16vh] flex items-center justify-center text-center px-4 mt-2 overflow-hidden shrink-0">
-          <AnimatePresence mode="wait">
-            {aiCurrentSubtitle ? (
-              <motion.div
-                key="ai-sub"
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="space-y-0.5 max-h-full overflow-hidden"
+              <button
+                onClick={() => {
+                  setActiveTab("interview");
+                  setIsModalOpen(true);
+                }}
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-lg shadow-purple-500/20 border border-purple-400/30 shrink-0 self-start sm:self-auto transition"
               >
-                <span className="text-[10px] font-mono uppercase tracking-widest font-extrabold text-cyan-400 block">
-                  Interviewer
+                <Play className="w-3.5 h-3.5 fill-current" /> Launch Live Interview
+              </button>
+            </div>
+
+            {/* Turn Timeline Scrubber */}
+            <div className="mt-6 pt-5 border-t border-cardBorder">
+              <div className="text-[11px] font-mono uppercase tracking-wider text-mutedText font-bold mb-3 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-purple-400" /> Session Timeline Scrubber
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {timeMachineTurns.map((turn, idx) => {
+                  const isSelected = selectedTmIndex === idx;
+                  return (
+                    <button
+                      key={turn.id}
+                      onClick={() => handleSelectTmTurn(idx)}
+                      className={`p-3.5 rounded-xl border text-left transition-all relative overflow-hidden ${
+                        isSelected
+                          ? "bg-purple-600/15 border-purple-500/60 shadow-lg shadow-purple-500/10"
+                          : "bg-[#0A0E1A] border-cardBorder hover:border-gray-700 text-mutedText"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs font-mono font-bold text-purple-400 flex items-center gap-1.5">
+                          <RotateCcw className="w-3 h-3" /> Turn {idx + 1}
+                        </span>
+                        <span className="text-[10px] font-mono text-gray-500">{turn.timestamp}</span>
+                      </div>
+                      <p className="text-xs text-gray-300 font-medium line-clamp-2">
+                        {turn.question}
+                      </p>
+                      <div className="mt-2.5 flex items-center justify-between text-[11px] font-mono">
+                        <span className="text-rose-400 font-semibold">Orig: {turn.originalScore}%</span>
+                        <span className="text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
+                          Branch: {turn.branchScore}%
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Turn Deep Dive & Branching Workspace */}
+          <div className="grid lg:grid-cols-12 gap-6 items-start">
+            {/* Left: Original Turn & AI Critique */}
+            <div className="lg:col-span-5 bg-secondaryBg/80 backdrop-blur-xl p-5 sm:p-6 rounded-2xl border border-cardBorder space-y-4 shadow-xl">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-bold text-purple-400 uppercase tracking-wider">
+                  Original Question #{selectedTmIndex + 1}
                 </span>
-                <p className="text-sm sm:text-base font-medium text-cyan-50 leading-snug drop-shadow-md line-clamp-3">
-                  &ldquo;{aiCurrentSubtitle}&rdquo;
-                  {isAiSpeaking && (
-                    <span className="inline-block w-1.5 h-3.5 ml-1 bg-cyan-400 rounded-sm animate-pulse align-middle shadow-sm shadow-cyan-400" />
-                  )}
-                </p>
-              </motion.div>
-            ) : (candidateLiveSubtitle || candidateInterimSubtitle) ? (
-              <motion.div
-                key="cand-sub"
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="space-y-0.5 max-h-full overflow-hidden"
-              >
-                <span className="text-[10px] font-mono uppercase tracking-widest font-extrabold text-purple-400 block">
-                  {formData.fullName || "Candidate"}
+                <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/30 font-bold">
+                  Score: {timeMachineTurns[selectedTmIndex].originalScore}%
                 </span>
-                <p className="text-sm sm:text-base font-medium text-purple-100 leading-snug drop-shadow-md line-clamp-3">
-                  &ldquo;
-                  <span>{candidateLiveSubtitle}</span>
-                  {candidateInterimSubtitle && (
-                    <span className="text-purple-300 italic opacity-85"> {candidateInterimSubtitle}</span>
-                  )}
-                  &rdquo;
-                  {isCandidateSpeaking && (
-                    <span className="inline-block w-1.5 h-3.5 ml-1 bg-purple-400 rounded-sm animate-pulse align-middle shadow-sm shadow-purple-400" />
-                  )}
+              </div>
+
+              <div>
+                <h3 className="text-sm font-bold text-white leading-snug">
+                  &ldquo;{timeMachineTurns[selectedTmIndex].question}&rdquo;
+                </h3>
+              </div>
+
+              <div className="p-4 rounded-xl bg-[#0A0E1A] border border-cardBorder space-y-1.5">
+                <span className="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-wider">Your Recorded Answer:</span>
+                <p className="text-xs text-gray-300 leading-relaxed italic">
+                  &ldquo;{timeMachineTurns[selectedTmIndex].originalAnswer}&rdquo;
                 </p>
-              </motion.div>
-            ) : isAiThinking ? (
-              <motion.div
-                key="thinking-sub"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex items-center justify-center gap-2 text-xs font-mono text-amber-300/90"
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-rose-950/20 border border-rose-500/30 text-xs text-rose-300 space-y-1">
+                <span className="font-bold text-rose-400 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 text-rose-400" /> Critical Scoring Flag:
+                </span>
+                <p className="leading-relaxed">{timeMachineTurns[selectedTmIndex].originalFeedback}</p>
+              </div>
+            </div>
+
+            {/* Right: What-If Branch Editor & Score Delta Simulator */}
+            <div className="lg:col-span-7 bg-secondaryBg/80 backdrop-blur-xl p-5 sm:p-6 rounded-2xl border border-cardBorder space-y-5 shadow-xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-400">
+                    <GitBranch className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white text-sm">Branch Playground: Alternative Answer</h3>
+                    <p className="text-[11px] text-mutedText">Refine your response and simulate live evaluator re-grading</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleSimulateBranch}
+                  disabled={isSimulatingBranch}
+                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg shadow-purple-500/25 border border-purple-400/30 transition disabled:opacity-50 shrink-0"
+                >
+                  {isSimulatingBranch ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Simulating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300" /> Simulate Branch Delta
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="relative">
+                <textarea
+                  value={branchDraftAnswer}
+                  onChange={(e) => setBranchDraftAnswer(e.target.value)}
+                  placeholder="Draft your alternative answer here..."
+                  className="w-full h-36 bg-[#0A0E1A] border border-cardBorder rounded-xl p-4 font-sans text-xs text-purple-100 focus:outline-none focus:border-purple-500 resize-none leading-relaxed"
+                />
+              </div>
+
+              {/* Side-by-side Score Comparison Panel */}
+              <div className="p-4 rounded-xl bg-gradient-to-br from-purple-950/30 via-[#0A0E1A] to-[#0A0E1A] border border-purple-500/40 space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <TrendingUp className="w-4 h-4 text-emerald-400" />
+                    Simulated Score Delta
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                      {evaluatedTurn.delta} Score Improvement
+                    </span>
+                    <span className="text-sm font-black text-white font-mono">
+                      {evaluatedTurn.branchScore}%
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2.5 text-center">
+                  <div className="p-2 rounded-lg bg-white/5 border border-white/5">
+                    <span className="text-[10px] font-mono text-mutedText block">Clarity</span>
+                    <span className="text-xs font-bold text-white font-mono">{timeMachineTurns[selectedTmIndex].metrics.clarity}%</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-white/5 border border-white/5">
+                    <span className="text-[10px] font-mono text-mutedText block">Precision</span>
+                    <span className="text-xs font-bold text-emerald-400 font-mono">{timeMachineTurns[selectedTmIndex].metrics.precision}%</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-white/5 border border-white/5">
+                    <span className="text-[10px] font-mono text-mutedText block">Confidence</span>
+                    <span className="text-xs font-bold text-purple-300 font-mono">{timeMachineTurns[selectedTmIndex].metrics.confidence}%</span>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-mutedText leading-relaxed pt-1 border-t border-white/5">
+                  Branch response includes concrete technical mechanisms (CDC, Kafka events, exponential backoff) solving the previous architectural gap.
+                </p>
+              </div>
+            </div>
+          </div>
+        </main>
+      ) : (
+        /* CENTER: HORIZONTALLY AND VERTICALLY CENTERED JARVIS ORB & SUBTITLES */
+        <main className="flex-1 w-full max-w-4xl flex flex-col items-center justify-center relative z-10 py-2 my-auto text-center">
+          <div className="flex flex-col items-center justify-center w-full">
+            <JarvisOrb
+              isAiSpeaking={isAiSpeaking}
+              isCandidateSpeaking={isCandidateSpeaking}
+              isAiThinking={isAiThinking}
+              isInterviewActive={isInterviewActive}
+              audioVolume={micVolume}
+            />
+          </div>
+
+          {/* REAL-TIME TWO-WAY CINEMATIC SUBTITLES (Responsive clamp without page overflow) */}
+          <div className="w-full max-w-2xl min-h-[72px] max-h-[16vh] flex items-center justify-center text-center px-4 mt-2 overflow-hidden shrink-0">
+            <AnimatePresence mode="wait">
+              {aiCurrentSubtitle ? (
+                <motion.div
+                  key="ai-sub"
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="space-y-0.5 max-h-full overflow-hidden"
+                >
+                  <span className="text-[10px] font-mono uppercase tracking-widest font-extrabold text-cyan-400 block">
+                    Interviewer
+                  </span>
+                  <p className="text-sm sm:text-base font-medium text-cyan-50 leading-snug drop-shadow-md line-clamp-3">
+                    &ldquo;{aiCurrentSubtitle}&rdquo;
+                    {isAiSpeaking && (
+                      <span className="inline-block w-1.5 h-3.5 ml-1 bg-cyan-400 rounded-sm animate-pulse align-middle shadow-sm shadow-cyan-400" />
+                    )}
+                  </p>
+                </motion.div>
+              ) : (candidateLiveSubtitle || candidateInterimSubtitle) ? (
+                <motion.div
+                  key="cand-sub"
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="space-y-0.5 max-h-full overflow-hidden"
+                >
+                  <span className="text-[10px] font-mono uppercase tracking-widest font-extrabold text-purple-400 block">
+                    {formData.fullName || "Candidate"}
+                  </span>
+                  <p className="text-sm sm:text-base font-medium text-purple-100 leading-snug drop-shadow-md line-clamp-3">
+                    &ldquo;
+                    <span>{candidateLiveSubtitle}</span>
+                    {candidateInterimSubtitle && (
+                      <span className="text-purple-300 italic opacity-85"> {candidateInterimSubtitle}</span>
+                    )}
+                    &rdquo;
+                    {isCandidateSpeaking && (
+                      <span className="inline-block w-1.5 h-3.5 ml-1 bg-purple-400 rounded-sm animate-pulse align-middle shadow-sm shadow-purple-400" />
+                    )}
+                  </p>
+                </motion.div>
+              ) : isAiThinking ? (
+                <motion.div
+                  key="thinking-sub"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex items-center justify-center gap-2 text-xs font-mono text-amber-300/90"
+                >
+                  <Loader2 className="w-3.5 h-3.5 text-amber-400 animate-spin" />
+                  <span>Formulating response...</span>
+                </motion.div>
+              ) : (
+                <p className="text-xs text-gray-500 font-mono tracking-wider">
+                  {isInterviewActive
+                    ? "Speak into microphone to answer • Interrupt anytime"
+                    : "Click 'Initialize JARVIS' to set preferences and launch voice interview"}
+                </p>
+              )}
+            </AnimatePresence>
+          </div>
+        </main>
+      )}
+
+      {/* BOTTOM CONTROLS BAR (Shown when activeTab === 'interview' or interview is active) */}
+      {(isInterviewActive || activeTab === "interview") && (
+        <footer className="w-full max-w-xl flex items-center justify-center gap-3 z-20 pb-1 sm:pb-2 shrink-0">
+          <div className="flex items-center gap-3 p-2 rounded-2xl bg-black/60 border border-white/10 backdrop-blur-2xl shadow-2xl">
+            {!isInterviewActive ? (
+              <motion.button
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => setIsModalOpen(true)}
+                className="relative group bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-extrabold text-xs px-6 py-3 rounded-xl flex items-center gap-2.5 shadow-lg shadow-cyan-500/25 transition border border-cyan-300/30"
               >
-                <Loader2 className="w-3.5 h-3.5 text-amber-400 animate-spin" />
-                <span>Formulating response...</span>
-              </motion.div>
+                <Play className="w-4 h-4 fill-current text-white" />
+                <span>Initialize JARVIS</span>
+              </motion.button>
             ) : (
-              <p className="text-xs text-gray-500 font-mono tracking-wider">
-                {isInterviewActive
-                  ? "Speak into microphone to answer • Interrupt anytime"
-                  : "Click 'Initialize JARVIS' to set preferences and launch voice interview"}
-              </p>
+              <motion.button
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={handleEndInterview}
+                className="bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold text-xs px-5 py-3 rounded-xl flex items-center gap-2 shadow-lg shadow-red-600/30 transition border border-rose-400/30"
+              >
+                <Square className="w-4 h-4 fill-current" />
+                <span>End Interview</span>
+              </motion.button>
             )}
-          </AnimatePresence>
-        </div>
-      </main>
 
-      {/* BOTTOM CONTROLS BAR */}
-      <footer className="w-full max-w-xl flex items-center justify-center gap-3 z-20 pb-1 sm:pb-2 shrink-0">
-        <div className="flex items-center gap-3 p-2 rounded-2xl bg-black/60 border border-white/10 backdrop-blur-2xl shadow-2xl">
-          {!isInterviewActive ? (
-            <motion.button
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.96 }}
-              onClick={() => setIsModalOpen(true)}
-              className="relative group bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-extrabold text-xs px-6 py-3 rounded-xl flex items-center gap-2.5 shadow-lg shadow-cyan-500/25 transition border border-cyan-300/30"
-            >
-              <Play className="w-4 h-4 fill-current text-white" />
-              <span>Initialize JARVIS</span>
-            </motion.button>
-          ) : (
-            <motion.button
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.96 }}
-              onClick={handleEndInterview}
-              className="bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold text-xs px-5 py-3 rounded-xl flex items-center gap-2 shadow-lg shadow-red-600/30 transition border border-rose-400/30"
-            >
-              <Square className="w-4 h-4 fill-current" />
-              <span>End Interview</span>
-            </motion.button>
-          )}
-
-          {isInterviewActive && (
-            <motion.button
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.96 }}
-              onClick={toggleMute}
-              className={`p-3 rounded-xl border transition shadow-md ${
-                isMuted
-                  ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                  : "bg-white/5 hover:bg-white/10 text-gray-200 border-white/10"
-              }`}
-            >
-              {isMuted ? <MicOff className="w-4 h-4 text-amber-400" /> : <Mic className="w-4 h-4 text-cyan-400" />}
-            </motion.button>
-          )}
-        </div>
-      </footer>
+            {isInterviewActive && (
+              <motion.button
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={toggleMute}
+                className={`p-3 rounded-xl border transition shadow-md ${
+                  isMuted
+                    ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                    : "bg-white/5 hover:bg-white/10 text-gray-200 border-white/10"
+                }`}
+              >
+                {isMuted ? <MicOff className="w-4 h-4 text-amber-400" /> : <Mic className="w-4 h-4 text-cyan-400" />}
+              </motion.button>
+            )}
+          </div>
+        </footer>
+      )}
 
       {/* PRE-INTERVIEW POPUP REGISTRATION MODAL */}
       <AnimatePresence>

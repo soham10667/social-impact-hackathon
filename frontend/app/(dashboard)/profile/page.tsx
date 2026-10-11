@@ -205,52 +205,52 @@ export default function ProfileAndSettingsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-8 max-w-4xl animate-fadeIn">
       {/* Header Banner & Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-gray-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2.5">
-            <User className="w-6 h-6 text-blue-400" /> Profile & Settings
+          <h1 className="text-3xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
+            <User className="w-8 h-8 text-blue-400" /> Candidate Profile & Settings
           </h1>
-          <p className="text-mutedText text-sm mt-1">
-            Manage your student credentials, placement target goals, and platform AI preferences.
+          <p className="text-slate-400 text-sm mt-1">
+            Manage your student credentials, placement targets, and AI agent preferences.
           </p>
         </div>
 
         {/* Tab Controls */}
-        <div className="flex bg-secondaryBg p-1 rounded-xl border border-gray-800 shrink-0">
+        <div className="flex bg-[#0D1220] p-1.5 rounded-2xl border border-slate-800 shrink-0">
           <button
             onClick={() => handleTabChange("profile")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition ${
+            className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-semibold transition-all ${
               activeTab === "profile"
-                ? "bg-primaryAccent text-white shadow-md shadow-blue-500/25"
-                : "text-mutedText hover:text-white"
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25"
+                : "text-slate-400 hover:text-white"
             }`}
           >
-            <User className="w-3.5 h-3.5" /> My Profile
+            <User className="w-4 h-4" /> My Profile
           </button>
           <button
             onClick={() => handleTabChange("settings")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition ${
+            className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-semibold transition-all ${
               activeTab === "settings"
-                ? "bg-primaryAccent text-white shadow-md shadow-blue-500/25"
-                : "text-mutedText hover:text-white"
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25"
+                : "text-slate-400 hover:text-white"
             }`}
           >
-            <Settings className="w-3.5 h-3.5" /> Account Settings
+            <Settings className="w-4 h-4" /> Account Settings
           </button>
         </div>
       </div>
 
       {/* Status Alert Banner */}
       {statusMessage && (
-        <div className={`p-4 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
+        <div className={`p-4 rounded-2xl border text-xs font-semibold flex items-center gap-2.5 animate-fadeIn ${
           statusMessage.type === "success" 
-            ? "bg-green-500/10 border-green-500/30 text-green-400" 
+            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" 
             : "bg-red-500/10 border-red-500/30 text-red-400"
         }`}>
           {statusMessage.type === "success" ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
-          {statusMessage.text}
+          <span>{statusMessage.text}</span>
         </div>
       )}
 
@@ -258,48 +258,51 @@ export default function ProfileAndSettingsPage() {
       {activeTab === "profile" && (
         <div className="space-y-6">
           {/* Candidate Card Overview */}
-          <div className="bg-cardBg p-6 rounded-2xl border border-gray-800 flex flex-col md:flex-row items-center gap-6 shadow-xl">
-            <div className="w-20 h-20 rounded-2xl bg-secondaryAccent flex items-center justify-center font-extrabold text-white text-2xl shadow-lg shadow-purple-500/20 shrink-0">
+          <div className="bg-[#121829] p-8 rounded-3xl border border-[#1E273E] flex flex-col md:flex-row items-center gap-6 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
+            
+            <div className="w-24 h-24 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-blue-600 flex items-center justify-center font-extrabold text-white text-3xl shadow-xl shadow-purple-500/20 shrink-0 border-2 border-white/10">
               {initials}
             </div>
-            <div className="text-center md:text-left space-y-1 flex-1">
-              <h2 className="text-xl font-bold text-white">{fullName || "Student Candidate"}</h2>
-              <p className="text-sm text-mutedText flex items-center justify-center md:justify-start gap-1.5">
-                <Mail className="w-3.5 h-3.5 text-blue-400" /> {email || "candidate@preppilot.ai"}
+            <div className="text-center md:text-left space-y-2 flex-1">
+              <h2 className="text-2xl font-extrabold text-white tracking-tight">{fullName || "Student Candidate"}</h2>
+              <p className="text-sm text-slate-400 flex items-center justify-center md:justify-start gap-2">
+                <Mail className="w-4 h-4 text-blue-400" /> {email || "candidate@preppilot.ai"}
               </p>
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-2">
-                <span className="text-xs px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-medium">
-                  {targetRole}
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-1">
+                <span className="text-xs px-3.5 py-1 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/30 font-semibold flex items-center gap-1.5">
+                  <Briefcase className="w-3.5 h-3.5" /> {targetRole}
                 </span>
-                <span className="text-xs px-3 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 font-medium">
-                  Class of {graduationYear}
+                <span className="text-xs px-3.5 py-1 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/30 font-semibold flex items-center gap-1.5">
+                  <GraduationCap className="w-3.5 h-3.5" /> Class of {graduationYear}
                 </span>
               </div>
             </div>
-            <div className="p-4 rounded-xl bg-secondaryBg border border-gray-800 text-center shrink-0">
-              <span className="text-xs text-mutedText block">Readiness Score</span>
-              <span className="text-2xl font-extrabold text-blue-400">82%</span>
+            <div className="p-5 rounded-2xl bg-[#0B0F1B] border border-blue-500/20 text-center shrink-0 min-w-[140px]">
+              <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold block">Readiness</span>
+              <span className="text-3xl font-black text-blue-400 mt-1 block">82%</span>
+              <span className="text-[10px] text-emerald-400 font-bold block mt-0.5">Top 15% Rank</span>
             </div>
           </div>
 
           {/* Placement Progress Metrics */}
-          <div className="grid md:grid-cols-3 gap-5">
-            <div className="bg-cardBg p-5 rounded-2xl border border-gray-800">
-              <span className="text-xs text-mutedText">Technical Interviews</span>
-              <h3 className="text-2xl font-bold text-white mt-1">8 Completed</h3>
-              <span className="text-xs text-green-400 block mt-1">Average 84.5%</span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="bg-[#121829] p-6 rounded-2xl border border-[#1E273E] shadow-xl">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Technical Mock Interviews</span>
+              <h3 className="text-2xl font-extrabold text-white mt-2">8 Completed</h3>
+              <span className="text-xs text-emerald-400 font-semibold block mt-1">Average 84.5% Score</span>
             </div>
 
-            <div className="bg-cardBg p-5 rounded-2xl border border-gray-800">
-              <span className="text-xs text-mutedText">Coding Problems</span>
-              <h3 className="text-2xl font-bold text-white mt-1">24 Solved</h3>
-              <span className="text-xs text-blue-400 block mt-1">Python, DSA, SQL</span>
+            <div className="bg-[#121829] p-6 rounded-2xl border border-[#1E273E] shadow-xl">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Coding Problems</span>
+              <h3 className="text-2xl font-extrabold text-white mt-2">24 Solved</h3>
+              <span className="text-xs text-blue-400 font-semibold block mt-1">Python, DSA, SQL</span>
             </div>
 
-            <div className="bg-cardBg p-5 rounded-2xl border border-gray-800">
-              <span className="text-xs text-mutedText">Skill Graph Mastery</span>
-              <h3 className="text-2xl font-bold text-purple-400 mt-1">5 Topics</h3>
-              <span className="text-xs text-mutedText block mt-1">FastAPI, Next.js, Trees</span>
+            <div className="bg-[#121829] p-6 rounded-2xl border border-[#1E273E] shadow-xl">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Skill Graph Mastery</span>
+              <h3 className="text-2xl font-extrabold text-purple-400 mt-2">5 Core Topics</h3>
+              <span className="text-xs text-slate-400 font-medium block mt-1">FastAPI, Next.js, Trees</span>
             </div>
           </div>
         </div>
@@ -310,13 +313,13 @@ export default function ProfileAndSettingsPage() {
         <div className="space-y-6">
           <form onSubmit={handleSaveProfile} className="space-y-6" noValidate>
             {/* Student Profile Information */}
-            <div className="bg-cardBg p-6 rounded-2xl border border-gray-800 space-y-4 shadow-xl">
+            <div className="bg-[#121829] p-6 rounded-2xl border border-[#1E273E] space-y-5 shadow-xl">
               <h2 className="text-base font-bold text-white flex items-center gap-2">
                 <User className="w-4 h-4 text-blue-400" /> Student Profile Details
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-sm">
                 <div>
-                  <label className="text-xs text-mutedText block mb-1.5 font-medium">
+                  <label className="text-xs text-slate-300 block mb-1.5 font-semibold">
                     Full Name <span className="text-blue-400">*</span>
                   </label>
                   <input
@@ -328,8 +331,8 @@ export default function ProfileAndSettingsPage() {
                     }}
                     onBlur={() => handleBlur("fullName")}
                     placeholder="e.g. Vinay Puppalwar"
-                    className={`w-full bg-secondaryBg border rounded-xl p-3 text-white text-sm focus:outline-none transition ${
-                      touched.fullName && errors.fullName ? "border-red-500/70 focus:border-red-500" : "border-gray-800 focus:border-blue-500"
+                    className={`w-full bg-[#0D1220] border rounded-xl p-3.5 text-white text-sm focus:outline-none transition ${
+                      touched.fullName && errors.fullName ? "border-red-500/70 focus:border-red-500" : "border-slate-800 focus:border-blue-500"
                     }`}
                   />
                   {touched.fullName && errors.fullName && (
@@ -339,16 +342,16 @@ export default function ProfileAndSettingsPage() {
                   )}
                 </div>
                 <div>
-                  <label className="text-xs text-mutedText block mb-1.5 font-medium">Email Address</label>
+                  <label className="text-xs text-slate-300 block mb-1.5 font-semibold">Email Address</label>
                   <input
                     type="email"
                     value={email}
                     disabled
-                    className="w-full bg-secondaryBg/60 border border-gray-800 rounded-xl p-3 text-gray-400 text-sm cursor-not-allowed"
+                    className="w-full bg-[#090D17] border border-slate-800 rounded-xl p-3.5 text-slate-500 text-sm cursor-not-allowed"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-mutedText block mb-1.5 font-medium">
+                  <label className="text-xs text-slate-300 block mb-1.5 font-semibold">
                     Target Job Role <span className="text-blue-400">*</span>
                   </label>
                   <input
@@ -360,8 +363,8 @@ export default function ProfileAndSettingsPage() {
                     }}
                     onBlur={() => handleBlur("targetRole")}
                     placeholder="e.g. Full-Stack Developer"
-                    className={`w-full bg-secondaryBg border rounded-xl p-3 text-white text-sm focus:outline-none transition ${
-                      touched.targetRole && errors.targetRole ? "border-red-500/70 focus:border-red-500" : "border-gray-800 focus:border-blue-500"
+                    className={`w-full bg-[#0D1220] border rounded-xl p-3.5 text-white text-sm focus:outline-none transition ${
+                      touched.targetRole && errors.targetRole ? "border-red-500/70 focus:border-red-500" : "border-slate-800 focus:border-blue-500"
                     }`}
                   />
                   {touched.targetRole && errors.targetRole && (
@@ -371,7 +374,7 @@ export default function ProfileAndSettingsPage() {
                   )}
                 </div>
                 <div>
-                  <label className="text-xs text-mutedText block mb-1.5 font-medium">Graduation Year</label>
+                  <label className="text-xs text-slate-300 block mb-1.5 font-semibold">Graduation Year</label>
                   <input
                     type="text"
                     value={graduationYear}
@@ -381,8 +384,8 @@ export default function ProfileAndSettingsPage() {
                     }}
                     onBlur={() => handleBlur("graduationYear")}
                     placeholder="2026"
-                    className={`w-full bg-secondaryBg border rounded-xl p-3 text-white text-sm focus:outline-none transition ${
-                      touched.graduationYear && errors.graduationYear ? "border-red-500/70 focus:border-red-500" : "border-gray-800 focus:border-blue-500"
+                    className={`w-full bg-[#0D1220] border rounded-xl p-3.5 text-white text-sm focus:outline-none transition ${
+                      touched.graduationYear && errors.graduationYear ? "border-red-500/70 focus:border-red-500" : "border-slate-800 focus:border-blue-500"
                     }`}
                   />
                   {touched.graduationYear && errors.graduationYear && (
@@ -395,14 +398,14 @@ export default function ProfileAndSettingsPage() {
             </div>
 
             {/* Password & Security Section */}
-            <div className="bg-cardBg p-6 rounded-2xl border border-gray-800 space-y-4 shadow-xl">
+            <div className="bg-[#121829] p-6 rounded-2xl border border-[#1E273E] space-y-4 shadow-xl">
               <h2 className="text-base font-bold text-white flex items-center gap-2">
                 <Lock className="w-4 h-4 text-emerald-400" /> Password & Security
               </h2>
-              <p className="text-xs text-mutedText">Leave blank if you do not wish to update your password.</p>
+              <p className="text-xs text-slate-400">Leave blank if you do not wish to update your password.</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
-                  <label className="text-xs text-mutedText block mb-1.5 font-medium">New Password</label>
+                  <label className="text-xs text-slate-300 block mb-1.5 font-semibold">New Password</label>
                   <input
                     type="password"
                     value={newPassword}
@@ -412,8 +415,8 @@ export default function ProfileAndSettingsPage() {
                     }}
                     onBlur={() => handleBlur("newPassword")}
                     placeholder="Minimum 8 characters"
-                    className={`w-full bg-secondaryBg border rounded-xl p-3 text-white text-sm focus:outline-none transition ${
-                      touched.newPassword && errors.newPassword ? "border-red-500/70 focus:border-red-500" : "border-gray-800 focus:border-blue-500"
+                    className={`w-full bg-[#0D1220] border rounded-xl p-3.5 text-white text-sm focus:outline-none transition ${
+                      touched.newPassword && errors.newPassword ? "border-red-500/70 focus:border-red-500" : "border-slate-800 focus:border-blue-500"
                     }`}
                   />
                   {touched.newPassword && errors.newPassword && (
@@ -423,7 +426,7 @@ export default function ProfileAndSettingsPage() {
                   )}
                 </div>
                 <div>
-                  <label className="text-xs text-mutedText block mb-1.5 font-medium">Confirm New Password</label>
+                  <label className="text-xs text-slate-300 block mb-1.5 font-semibold">Confirm New Password</label>
                   <input
                     type="password"
                     value={confirmNewPassword}
@@ -433,8 +436,8 @@ export default function ProfileAndSettingsPage() {
                     }}
                     onBlur={() => handleBlur("confirmNewPassword")}
                     placeholder="Re-enter new password"
-                    className={`w-full bg-secondaryBg border rounded-xl p-3 text-white text-sm focus:outline-none transition ${
-                      touched.confirmNewPassword && errors.confirmNewPassword ? "border-red-500/70 focus:border-red-500" : "border-gray-800 focus:border-blue-500"
+                    className={`w-full bg-[#0D1220] border rounded-xl p-3.5 text-white text-sm focus:outline-none transition ${
+                      touched.confirmNewPassword && errors.confirmNewPassword ? "border-red-500/70 focus:border-red-500" : "border-slate-800 focus:border-blue-500"
                     }`}
                   />
                   {touched.confirmNewPassword && errors.confirmNewPassword && (
@@ -447,28 +450,28 @@ export default function ProfileAndSettingsPage() {
             </div>
 
             {/* Platform & AI Engine Preferences */}
-            <div className="bg-cardBg p-6 rounded-2xl border border-gray-800 space-y-4 shadow-xl">
+            <div className="bg-[#121829] p-6 rounded-2xl border border-[#1E273E] space-y-4 shadow-xl">
               <h2 className="text-base font-bold text-white flex items-center gap-2">
                 <Cpu className="w-4 h-4 text-purple-400" /> AI & Platform Preferences
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
-                  <label className="text-xs text-mutedText block mb-1.5 font-medium">Primary LLM Provider</label>
+                  <label className="text-xs text-slate-300 block mb-1.5 font-semibold">Primary LLM Provider</label>
                   <select
                     value={llmProvider}
                     onChange={(e) => setLlmProvider(e.target.value)}
-                    className="w-full bg-secondaryBg border border-gray-800 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-blue-500"
+                    className="w-full bg-[#0D1220] border border-slate-800 rounded-xl p-3.5 text-white text-sm focus:outline-none focus:border-blue-500"
                   >
                     <option>Google Gemini 1.5 Pro (Default)</option>
                     <option>Mistral Large API</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-mutedText block mb-1.5 font-medium">Editor Theme</label>
+                  <label className="text-xs text-slate-300 block mb-1.5 font-semibold">Editor Theme</label>
                   <select
                     value={editorTheme}
                     onChange={(e) => setEditorTheme(e.target.value)}
-                    className="w-full bg-secondaryBg border border-gray-800 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-blue-500"
+                    className="w-full bg-[#0D1220] border border-slate-800 rounded-xl p-3.5 text-white text-sm focus:outline-none focus:border-blue-500"
                   >
                     <option>Dark Navy (PrepPilot Theme)</option>
                     <option>Monokai Pro</option>
@@ -481,7 +484,7 @@ export default function ProfileAndSettingsPage() {
             <button
               type="submit"
               disabled={saving}
-              className="bg-primaryAccent hover:bg-blue-600 text-white text-xs font-semibold px-6 py-3.5 rounded-xl flex items-center gap-2 transition disabled:opacity-50 shadow-lg shadow-blue-500/20"
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold px-6 py-3.5 rounded-xl flex items-center gap-2 transition disabled:opacity-50 shadow-lg shadow-blue-500/20 hover:scale-[1.01] active:scale-[0.99]"
             >
               <Save className="w-4 h-4" /> {saving ? "Saving Changes..." : "Save Profile & Settings"}
             </button>
@@ -491,3 +494,4 @@ export default function ProfileAndSettingsPage() {
     </div>
   );
 }
+
