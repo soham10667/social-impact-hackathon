@@ -360,6 +360,11 @@ export const EXAM_QUESTION_BANK: ExamQuestion[] = [
   }
 ];
 
+export { 
+  type AssessmentCategory, 
+  ASSESSMENT_CATEGORIES 
+} from "./constants";
+
 // Supported assessment categories
 export const VALID_ASSESSMENT_CATEGORIES = ["dsa", "dbms", "os-networks"] as const;
 export type AssessmentCategorySlug = typeof VALID_ASSESSMENT_CATEGORIES[number];

@@ -44,7 +44,7 @@ interface PreInterviewForm {
   jobDescription?: string;
 }
 
-export type AgentState = 
+type AgentState = 
   | "IDLE"
   | "SETUP"
   | "INTRODUCTION"

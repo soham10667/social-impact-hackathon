@@ -6,8 +6,8 @@ import Link from "next/link";
 import axios from "axios";
 import { 
   ASSESSMENT_CATEGORIES, 
-  AssessmentCategory 
-} from "../page";
+  AssessmentCategory,
+} from "../constants";
 import { 
   ExamQuestion, 
   getInitialQuestion, 
