@@ -1,3 +1,10 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
 [build.environment]
   SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_API_URL,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,MISTRAL_MODEL,MISTRAL_API_URL,ONECOMPILER_API_URL,DEEPGRAM_AGENT_URL"
   SECRETS_SCAN_OMIT_PATHS = ".next/cache,.next/server,app/api"
